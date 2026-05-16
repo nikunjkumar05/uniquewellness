@@ -50,14 +50,25 @@ cp .env.example .env
 Fill in the values:
 
 ```env
+# Client-safe Supabase settings
 SUPABASE_URL="https://your-project-ref.supabase.co"
 SUPABASE_PUBLISHABLE_KEY="your-supabase-anon-key"
+
+# Vite-exposed client variables
 VITE_SUPABASE_URL="https://your-project-ref.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="your-supabase-anon-key"
 VITE_SUPABASE_PROJECT_ID="your-project-ref"
 
+# Server-only Supabase secret for admin actions
+SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+
+# EnableX live-class credentials
 ENABLEX_APP_ID="your-enablex-app-id"
 ENABLEX_APP_KEY="your-enablex-app-key"
+
+# Optional Vite aliases for EnableX in local dev
+# VITE_ENABLEX_APP_ID="your-enablex-app-id"
+# VITE_ENABLEX_APP_KEY="your-enablex-app-key"
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is used by server-side admin functionality. Keep it only in trusted server/deployment environments and never expose it through `VITE_*` variables.
