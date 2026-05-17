@@ -1,6 +1,10 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  # Base directory where Netlify installs dependencies and runs the build command
+  base = "."
+  # Directory for Netlify Functions (serverless functions)
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/*"
