@@ -4,13 +4,15 @@ This project no longer includes Netlify-specific deployment configuration.
 
 Deployment providers you can use:
 
-- Vercel: recommended for serverless hosting and easy Git integration.
+- Vercel: recommended for serverless hosting and easy Git integration. Vercel builds use Nitro output.
 - Cloudflare Pages / Workers with the existing `wrangler.jsonc` configuration.
 
 General steps:
 
 1. Set required environment variables in your provider or CI secrets (see `.env.example`).
-2. Build with `npm run build` and publish the `dist` directory (provider-specific).
+2. Build with `npm run build`.
+3. On Vercel, keep the Framework Preset as TanStack Start or Nitro and do not override the output directory to `dist`. Nitro writes the Vercel Build Output API files to `.vercel/output`.
+4. For Cloudflare, run the normal build without the Vercel environment and deploy with the existing `wrangler.jsonc` configuration.
 
 If you'd like, I can add a GitHub Actions workflow for Vercel or update this guide for a specific provider.
 
