@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { useAuth, dashboardPathForRole } from "@/hooks/use-auth";
 
 const links = [
   { to: "/", label: "Home" },
@@ -13,6 +14,7 @@ const links = [
 ];
 
 export function Navbar() {
+  const { user, role } = useAuth();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -53,12 +55,22 @@ export function Navbar() {
         </ul>
 
         <div className="hidden lg:flex items-center gap-2">
-          <Link
-            to="/login"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/75 hover:bg-primary-soft/60"
-          >
-            Sign in
-          </Link>
+          {user ? (
+            <Link
+              to={dashboardPathForRole(role)}
+              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/75 hover:bg-primary-soft/60"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/75 hover:bg-primary-soft/60"
+            >
+              Sign in
+            </Link>
+          )}
+
           <Link
             to="/contact"
             className="rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover-lift shadow-soft"
@@ -92,6 +104,25 @@ export function Navbar() {
               {l.label}
             </Link>
           ))}
+
+          {user ? (
+            <Link
+              to={dashboardPathForRole(role)}
+              onClick={() => setOpen(false)}
+              className="block text-center mt-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setOpen(false)}
+              className="block text-center mt-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold"
+            >
+              Sign in
+            </Link>
+          )}
+
           <Link
             to="/contact"
             onClick={() => setOpen(false)}
