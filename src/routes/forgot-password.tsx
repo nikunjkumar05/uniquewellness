@@ -5,6 +5,7 @@ import { PageShell } from "@/components/site/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getPasswordResetRedirectUrl } from "@/lib/auth-redirects";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -21,7 +22,7 @@ function ForgotPage() {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password",
+      redirectTo: getPasswordResetRedirectUrl(),
     });
     setBusy(false);
     if (error) return toast.error(error.message);

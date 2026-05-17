@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { createStudentAccount } from "@/lib/admin.functions";
+import { getPasswordResetRedirectUrl } from "@/lib/auth-redirects";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +94,16 @@ type Fee = {
   paid_at: string | null;
 };
 
+type PasswordRequest = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  consent: boolean;
+  new_password_hash: string;
+  status: string;
+  created_at: string;
+};
+
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="glass-premium rounded-2xl p-5 hover-lift">
@@ -113,6 +124,7 @@ function AdminDashboard() {
   const [classes, setClasses] = useState<LiveClass[]>([]);
   const [demos, setDemos] = useState<DemoBooking[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
+  const [passwordRequests, setPasswordRequests] = useState<PasswordRequest[]>([]);
 
   async function reload() {
     const [p, r, c, e, l, d, f] = await Promise.all([
@@ -124,6 +136,9 @@ function AdminDashboard() {
       supabase.from("demo_bookings").select("*").order("created_at", { ascending: false }),
       supabase.from("fees").select("*").order("created_at", { ascending: false }),
     ]);
+    
+    // fetch password reset requests
+    const pr = await supabase.from("password_reset_requests").select("*").order("created_at", { ascending: false });
     if (p.data) setProfiles(p.data as Profile[]);
     if (r.data) setRoles(r.data as { user_id: string; role: string }[]);
     if (c.data) setCourses(c.data as Course[]);
@@ -131,6 +146,7 @@ function AdminDashboard() {
     if (l.data) setClasses(l.data as LiveClass[]);
     if (d.data) setDemos(d.data as DemoBooking[]);
     if (f.data) setFees(f.data as Fee[]);
+    if (pr.data) setPasswordRequests(pr.data as PasswordRequest[]);
   }
 
   useEffect(() => {
@@ -165,6 +181,7 @@ function AdminDashboard() {
           <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
           <TabsTrigger value="fees">Fees</TabsTrigger>
           <TabsTrigger value="demos">Demo Bookings</TabsTrigger>
+          <TabsTrigger value="password-requests">Password Requests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -203,6 +220,35 @@ function AdminDashboard() {
         <TabsContent value="demos">
           <DemoPanel demos={demos} onChange={reload} />
         </TabsContent>
+        <TabsContent value="password-requests">
+          <Card className="glass-premium rounded-2xl p-5 mt-4">
+            <h2 className="text-2xl mb-4 card-title">Password reset requests</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground">
+                  <tr>
+                    <th className="py-2">Requested At</th>
+                    <th>Email</th>
+                    <th>Name</th>
+                    <th>Consent</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {passwordRequests.map((r) => (
+                    <tr key={r.id} className="border-t border-border">
+                      <td className="py-3">{new Date(r.created_at).toLocaleString()}</td>
+                      <td>{r.email}</td>
+                      <td>{r.full_name || "—"}</td>
+                      <td>{r.consent ? "Yes" : "No"}</td>
+                      <td>{r.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -226,7 +272,7 @@ function AdminAccountPanel({ userEmail }: { userEmail: string | null }) {
     if (!userEmail) return toast.error("No signed-in admin email found");
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-      redirectTo: window.location.origin + "/reset-password",
+      redirectTo: getPasswordResetRedirectUrl(),
     });
     setBusy(false);
     if (error) return toast.error(error.message);

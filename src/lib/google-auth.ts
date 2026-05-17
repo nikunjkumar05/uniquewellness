@@ -1,7 +1,10 @@
-import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 
 export function signInWithGoogle(redirectPath: string) {
-  return lovable.auth.signInWithOAuth("google", {
-    redirect_uri: window.location.origin + redirectPath,
+  return supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin + redirectPath,
+    },
   });
 }

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import ForgotPasswordRequest from "@/components/site/forgot-password-request";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithGoogle } from "@/lib/google-auth";
@@ -97,9 +98,7 @@ function LoginPage() {
           </form>
 
           <div className="flex items-center justify-between mt-5 text-sm">
-            <Link to="/forgot-password" className="text-primary hover:underline">
-              Forgot password?
-            </Link>
+            <ForgotPasswordRequest />
             <Link to="/signup" className="text-primary hover:underline">
               Create account
             </Link>

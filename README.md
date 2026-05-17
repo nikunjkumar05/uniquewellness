@@ -110,7 +110,7 @@ src/
   components/site/        Site-specific layout and marketing components
   components/ui/          Reusable UI primitives
   hooks/                  Shared React hooks
-  integrations/           Supabase and Lovable auth integration code
+  integrations/           Supabase integration code
   lib/                    Server functions, auth helpers, error handling, utilities
   routes/                 TanStack Router file-based routes
   router.tsx              Router creation
@@ -150,7 +150,7 @@ The repository includes:
 
 - `wrangler.jsonc` for Cloudflare-oriented runtime configuration.
 - `netlify.toml` for Netlify build configuration.
-- `vite.config.ts` using `@lovable.dev/vite-tanstack-config` with a custom server entry.
+- `vite.config.ts` using standard Vite, TanStack Start, Tailwind, and Cloudflare plugins.
 
 Set all production environment variables in the deployment provider. Do not commit `.env`, `.dev.vars`, `dist`, `.wrangler`, or dependency/build cache directories.
 
