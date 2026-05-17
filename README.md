@@ -149,7 +149,6 @@ The app expects tables and policies for profiles, user roles, courses, enrollmen
 The repository includes:
 
 - `wrangler.jsonc` for Cloudflare-oriented runtime configuration.
-- `netlify.toml` for Netlify build configuration.
 - `vite.config.ts` using standard Vite, TanStack Start, Tailwind, and Cloudflare plugins.
 
 Set all production environment variables in the deployment provider. Do not commit `.env`, `.dev.vars`, `dist`, `.wrangler`, or dependency/build cache directories.
