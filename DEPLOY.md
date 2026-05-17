@@ -19,8 +19,6 @@ If you'd like, I can add a GitHub Actions workflow for Vercel or update this gui
 If using the provided GitHub Actions workflow, store secrets in your repository settings → Secrets and variables → Actions. Example using `gh`:
 
 ```bash
-gh secret set NETLIFY_AUTH_TOKEN --body "YOUR_NETLIFY_TOKEN"
-gh secret set NETLIFY_SITE_ID --body "YOUR_SITE_ID"
 gh secret set VITE_SUPABASE_URL --body "https://your-project-ref.supabase.co"
 gh secret set VITE_SUPABASE_PUBLISHABLE_KEY --body "PUBLIC_KEY"
 gh secret set SUPABASE_SERVICE_ROLE_KEY --body "SERVICE_ROLE_KEY"
