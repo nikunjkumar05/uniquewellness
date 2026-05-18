@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { signInWithGoogle } from "@/lib/google-auth";
 import { PageShell } from "@/components/site/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,14 +38,7 @@ function SignupPage() {
     navigate({ to: "/login" });
   }
 
-  async function onGoogle() {
-    setBusy(true);
-    const result = await signInWithGoogle("/auth-callback");
-    if (result.error) {
-      setBusy(false);
-      toast.error("Google sign-up failed");
-    }
-  }
+  
 
   return (
     <PageShell>
@@ -55,18 +47,7 @@ function SignupPage() {
           <h1 className="text-4xl text-foreground mb-1">Create your account</h1>
           <p className="text-sm text-muted-foreground mb-6">Join the academy as a student.</p>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full mb-4 font-bold"
-            onClick={onGoogle}
-            disabled={busy}
-          >
-            Continue with Google
-          </Button>
-          <div className="flex items-center gap-3 my-4 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
-          </div>
+          
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div>

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { signInWithGoogle } from "@/lib/google-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,10 +103,7 @@ function SettingsPage() {
     }
   }
 
-  async function connectGoogle() {
-    const result = await signInWithGoogle("/settings");
-    if (result.error) toast.error("Could not link Google account");
-  }
+  
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -197,11 +193,7 @@ function SettingsPage() {
               {hasGoogle ? "Connected" : "Not connected"}
             </div>
           </div>
-          {!hasGoogle && (
-            <Button variant="outline" onClick={connectGoogle}>
-              Connect Google
-            </Button>
-          )}
+          
         </div>
       </Card>
     </div>

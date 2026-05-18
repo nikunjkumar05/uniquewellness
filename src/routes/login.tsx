@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import ForgotPasswordRequest from "@/components/site/forgot-password-request";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { signInWithGoogle } from "@/lib/google-auth";
 import { dashboardPathForRole } from "@/hooks/use-auth";
 import { PageShell } from "@/components/site/page-shell";
 import { Button } from "@/components/ui/button";
@@ -40,14 +39,7 @@ function LoginPage() {
     }
   }
 
-  async function onGoogle() {
-    setBusy(true);
-    const result = await signInWithGoogle("/auth-callback");
-    if (result.error) {
-      setBusy(false);
-      toast.error("Google sign-in failed");
-    }
-  }
+  
 
   return (
     <PageShell>
@@ -58,18 +50,7 @@ function LoginPage() {
             Welcome back to Unique Wellness Institute.
           </p>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full mb-4"
-            onClick={onGoogle}
-            disabled={busy}
-          >
-            Continue with Google
-          </Button>
-          <div className="flex items-center gap-3 my-4 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
-          </div>
+          
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
