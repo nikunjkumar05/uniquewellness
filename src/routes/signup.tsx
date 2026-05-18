@@ -28,7 +28,7 @@ function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin + "/auth-callback",
+        emailRedirectTo: window.location.origin + "/login",
         data: { full_name: name, phone },
       },
     });

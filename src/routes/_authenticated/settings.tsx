@@ -28,7 +28,6 @@ function SettingsPage() {
   });
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [hasGoogle, setHasGoogle] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -47,7 +46,7 @@ function SettingsPage() {
             avatar_url: data.avatar_url,
           }),
       );
-    setHasGoogle((user.identities || []).some((i) => i.provider === "google"));
+    // OAuth provider checks removed
   }, [user]);
 
   async function saveProfile() {
@@ -184,18 +183,7 @@ function SettingsPage() {
         </Button>
       </Card>
 
-      <Card className="glass-premium rounded-3xl p-6 space-y-4">
-        <h2 className="text-2xl">Connected accounts</h2>
-        <div className="flex items-center justify-between glass rounded-2xl p-4">
-          <div>
-            <div className="font-semibold">Google</div>
-            <div className="text-xs text-muted-foreground">
-              {hasGoogle ? "Connected" : "Not connected"}
-            </div>
-          </div>
-          
-        </div>
-      </Card>
+      {/* Connected accounts removed (Google OAuth disabled) */}
     </div>
   );
 }

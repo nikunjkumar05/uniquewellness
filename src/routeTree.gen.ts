@@ -19,7 +19,6 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ChessRouteImport } from './routes/chess'
 import { Route as CareerRouteImport } from './routes/career'
 import { Route as BookDemoRouteImport } from './routes/book-demo'
-import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedStudentRouteImport } from './routes/_authenticated/student'
@@ -79,11 +78,6 @@ const BookDemoRoute = BookDemoRouteImport.update({
   path: '/book-demo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth-callback',
-  path: '/auth-callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -126,7 +120,6 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth-callback': typeof AuthCallbackRoute
   '/book-demo': typeof BookDemoRoute
   '/career': typeof CareerRoute
   '/chess': typeof ChessRoute
@@ -146,7 +139,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth-callback': typeof AuthCallbackRoute
   '/book-demo': typeof BookDemoRoute
   '/career': typeof CareerRoute
   '/chess': typeof ChessRoute
@@ -168,7 +160,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/auth-callback': typeof AuthCallbackRoute
   '/book-demo': typeof BookDemoRoute
   '/career': typeof CareerRoute
   '/chess': typeof ChessRoute
@@ -190,7 +181,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/auth-callback'
     | '/book-demo'
     | '/career'
     | '/chess'
@@ -210,7 +200,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/auth-callback'
     | '/book-demo'
     | '/career'
     | '/chess'
@@ -231,7 +220,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/auth-callback'
     | '/book-demo'
     | '/career'
     | '/chess'
@@ -253,7 +241,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
-  AuthCallbackRoute: typeof AuthCallbackRoute
   BookDemoRoute: typeof BookDemoRoute
   CareerRoute: typeof CareerRoute
   ChessRoute: typeof ChessRoute
@@ -336,13 +323,6 @@ declare module '@tanstack/react-router' {
       path: '/book-demo'
       fullPath: '/book-demo'
       preLoaderRoute: typeof BookDemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth-callback': {
-      id: '/auth-callback'
-      path: '/auth-callback'
-      fullPath: '/auth-callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -429,7 +409,6 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
-  AuthCallbackRoute: AuthCallbackRoute,
   BookDemoRoute: BookDemoRoute,
   CareerRoute: CareerRoute,
   ChessRoute: ChessRoute,
