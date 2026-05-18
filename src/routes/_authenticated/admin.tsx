@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,6 +157,11 @@ function AdminDashboard() {
   const coachCount = roles.filter((r) => r.role === "coach").length;
   const unpaidCount = fees.filter((f) => f.status === "unpaid").length;
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = new URLSearchParams(location.search);
+  const activeTab = params.get("tab") || "users";
+
   return (
     <div className="space-y-6">
       <div>
@@ -171,18 +176,7 @@ function AdminDashboard() {
         <StatCard label="Unpaid fees" value={unpaidCount} />
       </div>
 
-      <Tabs defaultValue="users">
-        <TabsList className="glass rounded-2xl flex-wrap h-auto">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="students">Add Student</TabsTrigger>
-          <TabsTrigger value="courses">Courses</TabsTrigger>
-          <TabsTrigger value="classes">Live Classes</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
-          <TabsTrigger value="fees">Fees</TabsTrigger>
-          <TabsTrigger value="demos">Demo Bookings</TabsTrigger>
-          <TabsTrigger value="password-requests">Password Requests</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={(v) => navigate({ to: `/admin?tab=${v}` })}>
 
         <TabsContent value="users">
           <UsersPanel profiles={profiles} roles={roles} onChange={reload} />

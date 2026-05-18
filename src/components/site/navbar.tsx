@@ -26,7 +26,16 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 px-3 sm:px-6 pt-3">
+    <header
+      className="fixed top-0 inset-x-0 isolate px-3 sm:px-6 pt-3 pointer-events-auto"
+      style={{
+        zIndex: 99999,
+        willChange: "transform",
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+        backfaceVisibility: "hidden",
+      }}
+    >
       <nav
         className={`glass-premium premium-panel mx-auto max-w-6xl rounded-2xl flex items-center justify-between px-4 sm:px-5 py-2.5 transition-all ${
           scrolled ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)]" : ""
