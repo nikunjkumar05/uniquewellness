@@ -53,6 +53,7 @@ function BookDemoPage() {
       preferred_subject: form.preferred_subject,
       preferred_timing: form.preferred_timing.trim() || null,
       course: form.preferred_subject,
+      source: "demo",
       message: form.message.trim() || null,
     });
     setBusy(false);

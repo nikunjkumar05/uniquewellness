@@ -76,6 +76,7 @@ type DemoBooking = {
   email: string;
   phone: string;
   course: string;
+  source: string | null;
   message: string | null;
   status: string;
   created_at: string;
@@ -125,6 +126,7 @@ function AdminDashboard() {
   const [demos, setDemos] = useState<DemoBooking[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
   const [passwordRequests, setPasswordRequests] = useState<PasswordRequest[]>([]);
+  const [contactAlert, setContactAlert] = useState<DemoBooking | null>(null);
 
   async function reload() {
     const [p, r, c, e, l, d, f] = await Promise.all([
@@ -150,7 +152,26 @@ function AdminDashboard() {
   }
 
   useEffect(() => {
-    reload();
+    void reload();
+
+    const channel = supabase
+      .channel("admin-demo-bookings")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "demo_bookings" },
+        ({ new: row }) => {
+          const booking = row as DemoBooking;
+          void reload();
+          if ((booking.source ?? "demo") === "contact") {
+            setContactAlert(booking);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   const studentCount = roles.filter((r) => r.role === "student").length;
@@ -164,6 +185,50 @@ function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      <Dialog
+        open={Boolean(contactAlert)}
+        onOpenChange={(open) => {
+          if (!open) setContactAlert(null);
+        }}
+      >
+        <DialogContent className="glass-premium max-w-lg text-center">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">New Contact Us submission</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Someone just filled the Contact Us form from {contactAlert?.name} / {contactAlert?.email}. Tap to view.
+            </p>
+            {contactAlert && (
+              <div className="rounded-2xl border border-border bg-background/60 p-4 text-left text-sm space-y-2">
+                <div>
+                  <span className="font-bold">Phone:</span> {contactAlert.phone}
+                </div>
+                <div>
+                  <span className="font-bold">Interested in:</span> {contactAlert.course}
+                </div>
+                {contactAlert.message && (
+                  <div>
+                    <span className="font-bold">Message:</span> {contactAlert.message}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="justify-center">
+            <Button
+              onClick={() => {
+                setContactAlert(null);
+                navigate({ to: "/admin?tab=demos" });
+              }}
+              className="font-bold"
+            >
+              View in dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div>
         <h1 className="text-4xl sm:text-5xl section-title">Admin Dashboard</h1>
         <p className="text-muted-foreground">Run the academy end-to-end.</p>
@@ -317,6 +382,18 @@ function AdminAccountPanel({ userEmail }: { userEmail: string | null }) {
     </Card>
   );
 }
+
+const EMPTY_COURSE_FORM = {
+  title: "",
+  description: "",
+  category: "chess",
+  price: 0,
+  coach_id: "",
+  thumbnail_url: "",
+  seats: 30,
+  schedule: "",
+  is_active: true,
+};
 
 function UsersPanel({
   profiles,
@@ -511,18 +588,7 @@ function CourseFormDialog({
   roles: { user_id: string; role: string }[];
   onSaved: () => void;
 }) {
-  const empty = {
-    title: "",
-    description: "",
-    category: "chess",
-    price: 0,
-    coach_id: "",
-    thumbnail_url: "",
-    seats: 30,
-    schedule: "",
-    is_active: true,
-  };
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(EMPTY_COURSE_FORM);
   const [uploading, setUploading] = useState(false);
   const coaches = profiles.filter(
     (p) => roles.find((r) => r.user_id === p.user_id)?.role === "coach",
@@ -541,7 +607,7 @@ function CourseFormDialog({
         schedule: course.schedule || "",
         is_active: course.is_active,
       });
-    else setForm(empty);
+    else setForm(EMPTY_COURSE_FORM);
   }, [course, open]);
 
   async function uploadThumb(file: File) {
@@ -1127,6 +1193,20 @@ function FeesPanel({
       onChange();
     }
   }
+  async function generateInvoice(f: Fee) {
+    const invoiceNumber = `INV-${f.period.replace(/-/g, "")}-${f.id.slice(0, 8).toUpperCase()}`;
+    const { error } = await supabase.from("invoices").upsert(
+      {
+        fee_id: f.id,
+        student_id: f.student_id,
+        invoice_number: invoiceNumber,
+        amount: f.amount,
+        issued_at: new Date().toISOString(),
+      },
+      { onConflict: "invoice_number" },
+    );
+    if (error) throw error;
+  }
   async function toggleStatus(f: Fee) {
     const next = f.status === "paid" ? "unpaid" : "paid";
     const { error } = await supabase
@@ -1134,7 +1214,16 @@ function FeesPanel({
       .update({ status: next, paid_at: next === "paid" ? new Date().toISOString() : null })
       .eq("id", f.id);
     if (error) toast.error(error.message);
-    else onChange();
+    else {
+      if (next === "paid") {
+        try {
+          await generateInvoice({ ...f, status: next, paid_at: new Date().toISOString() });
+        } catch (invoiceError) {
+          toast.error(invoiceError instanceof Error ? invoiceError.message : "Could not generate invoice");
+        }
+      }
+      onChange();
+    }
   }
   async function remove(id: string) {
     if (!confirm("Delete this fee record?")) return;
@@ -1269,6 +1358,9 @@ function FeesPanel({
 }
 
 function DemoPanel({ demos, onChange }: { demos: DemoBooking[]; onChange: () => void }) {
+  const contactBookings = demos.filter((d) => (d.source ?? "demo") === "contact");
+  const demoBookings = demos.filter((d) => (d.source ?? "demo") !== "contact");
+
   async function setStatus(id: string, status: "approved" | "rejected" | "pending") {
     const { error } = await supabase.from("demo_bookings").update({ status }).eq("id", id);
     if (error) toast.error(error.message);
@@ -1288,9 +1380,52 @@ function DemoPanel({ demos, onChange }: { demos: DemoBooking[]; onChange: () => 
   }
   return (
     <Card className="glass-premium rounded-2xl p-5 mt-4">
-      <h2 className="text-2xl mb-4 card-title">Demo bookings</h2>
+      <h2 className="text-2xl mb-4 card-title">Demo bookings & contact submissions</h2>
+
+      <div className="mb-6 rounded-2xl border border-border bg-background/60 p-4">
+        <h3 className="text-lg font-bold">Contact submissions</h3>
+        <div className="mt-3 space-y-2">
+          {contactBookings.map((d) => (
+            <div
+              key={d.id}
+              className="glass rounded-2xl p-4 flex items-start justify-between flex-wrap gap-3"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-bold">
+                  {d.name}
+                  <span className="ml-2 text-[10px] uppercase tracking-widest rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                    Contact
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {d.email} · {d.phone}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Course interest: {d.course}
+                </div>
+                {d.message && <p className="text-sm mt-1">{d.message}</p>}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <span
+                  className={`px-3 py-1 text-xs rounded-full font-bold ${d.status === "approved" ? "bg-primary text-primary-foreground" : d.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
+                >
+                  {d.status}
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "approved")}>Approve</Button>
+                <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "rejected")}>Reject</Button>
+                <Button size="sm" variant="outline" onClick={() => remove(d.id)}>
+                  <Trash2 size={14} />
+                </Button>
+              </div>
+            </div>
+          ))}
+          {contactBookings.length === 0 && <p className="text-muted-foreground">No contact submissions yet.</p>}
+        </div>
+      </div>
+
+      <h3 className="text-lg font-bold mb-3">Demo bookings</h3>
       <div className="space-y-2">
-        {demos.map((d) => (
+        {demoBookings.map((d) => (
           <div
             key={d.id}
             className="glass rounded-2xl p-4 flex items-start justify-between flex-wrap gap-3"

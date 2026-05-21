@@ -67,7 +67,7 @@ export function Navbar() {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 isolate px-3 sm:px-6 pt-3 pointer-events-none transition-[transform,opacity] duration-300 ease-out"
+      className="fixed top-0 inset-x-0 isolate px-3 sm:px-6 pt-2 sm:pt-3 pointer-events-none transition-[transform,opacity] duration-300 ease-out"
       style={{
         zIndex: 99999,
         willChange: "transform",
@@ -78,44 +78,14 @@ export function Navbar() {
       }}
     >
       <nav
-        className={`glass-premium premium-panel pointer-events-auto mx-auto max-w-6xl rounded-[28px] border border-white/60 bg-white/70 px-3 sm:px-4 py-2.5 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.28)] backdrop-blur-3xl transition-all duration-300 ${
+        className={`glass-premium premium-panel pointer-events-auto mx-auto w-full max-w-6xl rounded-2xl border border-white/60 bg-white/70 px-4 sm:px-6 py-3 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.28)] backdrop-blur-3xl transition-all duration-300 ${
           scrolled ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)]" : ""
         }`}
       >
-        <div className="grid grid-cols-[auto,1fr,auto] items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            {user ? (
-              <>
-                <Link
-                  to={dashboardHref}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2 text-[11px] font-semibold text-foreground transition hover:bg-primary/15 sm:text-sm"
-                >
-                  <LayoutDashboard size={14} />
-                  Dashboard
-                </Link>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/65 px-3 py-2 text-[11px] font-semibold text-foreground/80 transition hover:bg-white/90 sm:text-sm"
-                >
-                  <LogOut size={14} />
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-[11px] font-semibold text-foreground/80 transition hover:bg-white/95 sm:text-sm"
-              >
-                <LogIn size={14} />
-                Sign In
-              </Link>
-            )}
-          </div>
-
+        <div className="flex items-center gap-3 lg:gap-4">
           <Link
             to="/"
-            className="group mx-auto flex min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-1 transition-transform duration-500 hover:-translate-y-0.5"
+            className="group flex shrink-0 items-center gap-2 rounded-2xl px-1 py-1 transition-transform duration-500 hover:-translate-y-0.5"
           >
             <img
               src={logo}
@@ -124,8 +94,8 @@ export function Navbar() {
             />
           </Link>
 
-          <div className="flex items-center justify-end gap-2">
-            <ul className="hidden xl:flex items-center gap-1">
+          <div className="hidden flex-1 items-center justify-center lg:flex">
+            <ul className="flex items-center gap-1 rounded-full border border-white/60 bg-white/55 p-1 shadow-sm backdrop-blur-sm">
               {links.map((l) => (
                 <li key={l.to}>
                   <Link
@@ -142,20 +112,53 @@ export function Navbar() {
                 </li>
               ))}
             </ul>
+          </div>
 
-            {showDemoCta && (
-              <Link
-                to="/contact"
-                className="hidden sm:inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:-translate-y-0.5"
-              >
-                Book Demo
-              </Link>
-            )}
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden items-center gap-2 lg:flex">
+              {user ? (
+                <>
+                  <Link
+                    to={dashboardHref}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2 text-[11px] font-semibold text-foreground transition hover:bg-primary/15 sm:text-sm"
+                  >
+                    <LayoutDashboard size={14} />
+                    Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/65 px-3 py-2 text-[11px] font-semibold text-foreground/80 transition hover:bg-white/90 sm:text-sm"
+                  >
+                    <LogOut size={14} />
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-[11px] font-semibold text-foreground/80 transition hover:bg-white/95 sm:text-sm"
+                  >
+                    <LogIn size={14} />
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/contact"
+                    className="inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:-translate-y-0.5"
+                  >
+                    Book Demo
+                  </Link>
+                </>
+              )}
+            </div>
 
             <button
               onClick={() => setOpen((v) => !v)}
-              className="inline-flex items-center justify-center rounded-full bg-white/65 p-2.5 text-foreground/80 transition hover:bg-white/95 xl:hidden"
+              className="inline-flex items-center justify-center rounded-full bg-white/65 p-2.5 text-foreground/80 transition hover:bg-white/95 lg:hidden"
               aria-label="Menu"
+              aria-expanded={open}
+              aria-controls="mobile-navigation"
             >
               {open ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -164,31 +167,67 @@ export function Navbar() {
       </nav>
 
       {open && (
-        <div className="xl:hidden mt-2 mx-auto max-w-6xl glass-premium premium-panel rounded-[24px] p-3 space-y-1 pointer-events-auto">
-          {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className="block px-3 py-2 rounded-xl text-sm font-medium hover:bg-primary-soft/60"
-              activeProps={{
-                className: "block px-3 py-2 rounded-xl text-sm font-semibold bg-primary-soft",
-              }}
-              activeOptions={{ exact: l.to === "/" }}
-            >
-              {l.label}
-            </Link>
-          ))}
+        <div
+          id="mobile-navigation"
+          className="lg:hidden mt-2 mx-auto w-full max-w-6xl glass-premium premium-panel rounded-2xl p-3 pointer-events-auto"
+        >
+          <div className="space-y-1">
+            {links.map((l) => (
+              <Link
+                key={l.to}
+                to={l.to}
+                onClick={() => setOpen(false)}
+                className="block rounded-xl px-3 py-2 text-sm font-medium hover:bg-primary-soft/60"
+                activeProps={{
+                  className: "block rounded-xl px-3 py-2 text-sm font-semibold bg-primary-soft",
+                }}
+                activeOptions={{ exact: l.to === "/" }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
 
-          {showDemoCta && (
-            <Link
-              to="/contact"
-              onClick={() => setOpen(false)}
-              className="mt-2 block rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground"
-            >
-              Book Demo
-            </Link>
-          )}
+          <div className="mt-3 grid gap-2 border-t border-white/50 pt-3">
+            {user ? (
+              <>
+                <Link
+                  to={dashboardHref}
+                  onClick={() => setOpen(false)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary/10 px-4 py-3 text-sm font-semibold text-foreground"
+                >
+                  <LayoutDashboard size={14} />
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-3 text-sm font-semibold text-foreground/80"
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-3 text-sm font-semibold text-foreground/80"
+                >
+                  <LogIn size={14} />
+                  Sign In
+                </Link>
+                <Link
+                  to="/contact"
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground"
+                >
+                  Book Demo
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
     </header>

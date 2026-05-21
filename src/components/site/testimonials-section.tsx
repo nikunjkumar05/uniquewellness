@@ -75,10 +75,10 @@ export function TestimonialsSection({
                         <Star key={i} size={16} className="fill-primary text-primary" />
                       ))}
                     </div>
-                    <p className="text-lg sm:text-xl leading-relaxed text-foreground/90 font-medium">
+                    <p className="text-lg sm:text-xl leading-relaxed text-foreground/90 font-medium text-center">
                       "{t.quote}"
                     </p>
-                    <div className="mt-6 flex items-center justify-center gap-3">
+                    <div className="mt-6 flex flex-col items-center justify-center gap-3 text-center sm:flex-row">
                       {t.avatar_url ? (
                         <img
                           src={t.avatar_url}
@@ -90,7 +90,7 @@ export function TestimonialsSection({
                           {t.name.charAt(0)}
                         </div>
                       )}
-                      <div className="text-left">
+                      <div className="text-center sm:text-left">
                         <div className="font-bold">{t.name}</div>
                         {t.role && <div className="text-xs text-muted-foreground">{t.role}</div>}
                       </div>

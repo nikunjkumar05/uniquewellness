@@ -38,7 +38,7 @@ function FounderPage() {
   return (
     <PageShell>
       <section className="px-3 sm:px-6">
-        <div className="mx-auto max-w-6xl grid lg:grid-cols-5 gap-10 items-start py-10">
+        <div className="mx-auto max-w-6xl grid lg:grid-cols-5 gap-12 items-start py-12 lg:py-16">
           <div className="lg:col-span-2">
             <Parallax speed={0.08}>
               <Reveal>
@@ -60,10 +60,10 @@ function FounderPage() {
               </span>
               <h1 className="font-display text-5xl sm:text-6xl mt-3 leading-tight">Mrunal Kore</h1>
             </Reveal>
-            <div className="mt-6 space-y-5">
+            <div className="mt-7 space-y-6 max-w-3xl">
               {paragraphs.map((p, i) => (
                 <Reveal key={i} delay={i * 120}>
-                  <p className="text-muted-foreground leading-relaxed text-[1.02rem]">{p}</p>
+                  <p className="text-muted-foreground leading-8 text-[1.04rem] font-medium">{p}</p>
                 </Reveal>
               ))}
             </div>

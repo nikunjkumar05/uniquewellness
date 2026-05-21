@@ -5,9 +5,11 @@ import { Footer } from "./footer";
 export function PageShell({
   children,
   showNavbar = true,
+  showFooter = true,
 }: {
   children: ReactNode;
   showNavbar?: boolean;
+  showFooter?: boolean;
 }) {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
@@ -26,7 +28,7 @@ export function PageShell({
       </div>
       {showNavbar && <Navbar />}
       <main className={showNavbar ? "pt-24" : "pt-6"}>{children}</main>
-      <Footer />
+      {showFooter ? <Footer /> : null}
     </div>
   );
 }

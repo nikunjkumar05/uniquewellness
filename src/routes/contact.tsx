@@ -44,6 +44,7 @@ function ContactPage() {
       email: form.email.trim(),
       phone: form.phone.trim(),
       course: form.course,
+      source: "contact",
       message: form.message.trim() || null,
     });
     setLoading(false);

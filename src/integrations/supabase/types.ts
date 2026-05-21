@@ -98,6 +98,7 @@ export type Database = {
           preferred_subject: string | null;
           preferred_timing: string | null;
           status: string;
+          source: string | null;
           student_class: string | null;
         };
         Insert: {
@@ -112,6 +113,7 @@ export type Database = {
           preferred_subject?: string | null;
           preferred_timing?: string | null;
           status?: string;
+          source?: string | null;
           student_class?: string | null;
         };
         Update: {
@@ -126,6 +128,7 @@ export type Database = {
           preferred_subject?: string | null;
           preferred_timing?: string | null;
           status?: string;
+          source?: string | null;
           student_class?: string | null;
         };
         Relationships: [];
