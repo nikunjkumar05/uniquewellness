@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { Chess, type Move, type PieceSymbol, type Square } from "chess.js";
 import {
   Copy,
@@ -12,6 +12,20 @@ import {
   Save,
   Upload,
 } from "lucide-react";
+import {
+  FaChessBishop,
+  FaChessKing,
+  FaChessKnight,
+  FaChessPawn,
+  FaChessQueen,
+  FaChessRook,
+  FaRegChessBishop,
+  FaRegChessKing,
+  FaRegChessKnight,
+  FaRegChessPawn,
+  FaRegChessQueen,
+  FaRegChessRook,
+} from "react-icons/fa6";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,32 +42,13 @@ const ENGINE_LEVELS = {
 } as const;
 const STORAGE_KEY = "uwi.chess.saved-pgn";
 
-const pieceGlyphs: Record<PieceSymbol, Record<"w" | "b", string>> = {
-  p: { w: "♙", b: "♟" },
-  n: { w: "♘", b: "♞" },
-  b: { w: "♗", b: "♝" },
-  r: { w: "♖", b: "♜" },
-  q: { w: "♕", b: "♛" },
-  k: { w: "♔", b: "♚" },
-};
-
-const pieceWoodStyles: Record<"w" | "b", CSSProperties> = {
-  w: {
-    backgroundImage:
-      "radial-gradient(circle at 30% 24%, rgba(255, 248, 235, 0.98), rgba(235, 206, 159, 0.96) 42%, rgba(176, 122, 68, 0.98) 100%)",
-    boxShadow:
-      "inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -6px 10px rgba(117, 72, 31, 0.35), 0 10px 18px -14px rgba(71, 42, 18, 0.65)",
-    color: "#5c351a",
-    textShadow: "0 1px 0 rgba(255, 255, 255, 0.28)",
-  },
-  b: {
-    backgroundImage:
-      "radial-gradient(circle at 30% 24%, rgba(236, 201, 147, 0.98), rgba(164, 107, 55, 0.98) 46%, rgba(92, 55, 26, 0.99) 100%)",
-    boxShadow:
-      "inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 -6px 10px rgba(33, 18, 9, 0.42), 0 10px 18px -14px rgba(34, 18, 9, 0.72)",
-    color: "#2e170b",
-    textShadow: "0 1px 0 rgba(255, 255, 255, 0.08)",
-  },
+const pieceIcons: Record<PieceSymbol, Record<"w" | "b", typeof FaChessPawn>> = {
+  p: { w: FaRegChessPawn, b: FaChessPawn },
+  n: { w: FaRegChessKnight, b: FaChessKnight },
+  b: { w: FaRegChessBishop, b: FaChessBishop },
+  r: { w: FaRegChessRook, b: FaChessRook },
+  q: { w: FaRegChessQueen, b: FaChessQueen },
+  k: { w: FaRegChessKing, b: FaChessKing },
 };
 
 type EngineState = {
@@ -471,16 +466,20 @@ export function ChessLab() {
                                 <span className="absolute inset-2 z-10 rounded-full border-4 border-black/15" />
                               )}
                               {piece && (
-                                <span
-                                  className={`relative z-10 inline-flex h-[84%] w-[84%] items-center justify-center rounded-full border border-white/25 font-semibold tracking-tight ${
-                                    piece.color === "w"
-                                      ? "drop-shadow-[0_3px_4px_rgba(0,0,0,0.18)]"
-                                      : "drop-shadow-[0_3px_4px_rgba(0,0,0,0.28)]"
-                                  }`}
-                                  style={pieceWoodStyles[piece.color]}
-                                >
-                                  {pieceGlyphs[piece.type][piece.color]}
-                                </span>
+                                (() => {
+                                  const PieceIcon = pieceIcons[piece.type][piece.color];
+                                  return (
+                                    <span
+                                      className={`relative z-10 inline-flex h-[84%] w-[84%] items-center justify-center ${
+                                        piece.color === "w"
+                                          ? "text-[#1b1b1b] drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]"
+                                          : "text-black drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]"
+                                      }`}
+                                    >
+                                      <PieceIcon className="h-full w-full" aria-hidden />
+                                    </span>
+                                  );
+                                })()
                               )}
                             </button>
                           );
