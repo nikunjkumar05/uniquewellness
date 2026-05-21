@@ -22,7 +22,7 @@ Unique Wellness Institute is a TanStack Start web application for a coaching and
 - Supabase
 - EnableX video APIs
 - Radix UI primitives
-- ESLint and Prettier
+- ESLint
 
 ## Getting Started
 
@@ -100,7 +100,7 @@ npm run preview
 | `npm run build:dev` | Build using development mode.                  |
 | `npm run preview`   | Preview the production build locally.          |
 | `npm run lint`      | Run ESLint.                                    |
-| `npm run format`    | Format the project with Prettier.              |
+| `npm run format`    | Auto-fix lint issues with ESLint.              |
 
 ## Project Structure
 

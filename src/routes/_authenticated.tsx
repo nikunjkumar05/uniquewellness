@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useAuth, dashboardPathForRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { PageShell } from "@/components/site/page-shell";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ function AuthLayout() {
   }
 
   return (
-    <PageShell>
+    <PageShell showNavbar={false}>
       <div className="container mx-auto px-4 py-8">
         <div className="glass rounded-3xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3">
           <nav className="flex items-center gap-1 text-sm flex-wrap">
@@ -47,12 +47,19 @@ function AuthLayout() {
               (() => {
                 const params = new URLSearchParams(location.search);
                 const activeTab = params.get("tab") || "users";
-                const linkClass = "px-3 py-2 rounded-xl font-medium text-foreground/75 hover:bg-primary-soft/60";
-                const activeClass = "px-3 py-2 rounded-xl font-semibold bg-primary-soft text-foreground";
+                const isAdminActive = location.pathname === "/admin" && !location.search;
+                const isContentActive = location.pathname === "/content";
+                const isSettingsActive = location.pathname === "/settings";
+                const isTabActive = (tab: string) =>
+                  location.pathname.startsWith("/admin") && activeTab === tab;
+                const linkClass =
+                  "px-3 py-2 rounded-xl font-medium text-foreground/75 hover:bg-primary-soft/60";
+                const activeClass =
+                  "px-3 py-2 rounded-xl font-semibold bg-primary-soft text-foreground";
                 const adminTabLink = (tab: string, label: string) => (
                   <Link
                     to={`/admin?tab=${tab}`}
-                    className={location.pathname.startsWith("/admin") && activeTab === tab ? activeClass : linkClass}
+                    className={isTabActive(tab) ? activeClass : linkClass}
                   >
                     {label}
                   </Link>
@@ -60,14 +67,23 @@ function AuthLayout() {
 
                 return (
                   <>
-                    <Link to="/admin" className={location.pathname === "/admin" && !location.search ? activeClass : linkClass}>
+                    <Link
+                      to="/admin"
+                      className={isAdminActive ? activeClass : linkClass}
+                    >
                       Admin
                     </Link>
-                    <Link to="/content" className={location.pathname === "/content" ? activeClass : linkClass}>
+                    <Link
+                      to="/content"
+                      className={isContentActive ? activeClass : linkClass}
+                    >
                       Content
                     </Link>
                     {/* global Live Classes link removed (admin view uses admin tab) */}
-                    <Link to="/settings" className={location.pathname === "/settings" ? activeClass : linkClass}>
+                    <Link
+                      to="/settings"
+                      className={isSettingsActive ? activeClass : linkClass}
+                    >
                       Profile
                     </Link>
 
@@ -131,4 +147,3 @@ function DashLink({ to, label, hide }: { to: string; label: string; hide?: boole
   );
 }
 
-export { dashboardPathForRole };
