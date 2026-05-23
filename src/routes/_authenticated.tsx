@@ -68,6 +68,9 @@ function AuthLayout() {
 
                 return (
                   <>
+                    <Link to="/" className={location.pathname === "/" ? activeClass : linkClass}>
+                      Home
+                    </Link>
                     <Link
                       to="/admin"
                       className={isAdminActive ? activeClass : linkClass}
