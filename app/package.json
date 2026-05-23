@@ -1,0 +1,42 @@
+{
+  "name": "uniquewellness-android",
+  "version": "1.0.0",
+  "description": "Unique Wellness Institute - Android Native App",
+  "author": "Unique Wellness Institute",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:web": "npm run build --prefix ..",
+    "sync": "npx cap sync",
+    "sync:android": "npx cap sync android",
+    "build:android": "npm run build:web && npx cap sync android && cd android && ./gradlew assembleRelease",
+    "build:aab": "npm run build:web && npx cap sync android && cd android && ./gradlew bundleRelease",
+    "open:android": "npx cap open android",
+    "run:android": "npx cap run android",
+    "dev:android": "npx cap run android --live-reload",
+    "clean:android": "cd android && ./gradlew clean",
+    "lint": "eslint .",
+    "format": "eslint . --fix"
+  },
+  "dependencies": {
+    "@capacitor/app": "^6.1.2",
+    "@capacitor/camera": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/geolocation": "^6.1.2",
+    "@capacitor/haptics": "^6.1.2",
+    "@capacitor/keyboard": "^6.1.2",
+    "@capacitor/network": "^6.1.2",
+    "@capacitor/preferences": "^6.1.2",
+    "@capacitor/push-notifications": "^6.1.2",
+    "@capacitor/status-bar": "^6.1.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "@types/node": "^22.16.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.8.3"
+  }
+}

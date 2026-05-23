@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!-- Default policy: Enforce HTTPS for all domains -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">.</domain>
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </domain-config>
+
+  <!-- Allow cleartext traffic ONLY for localhost debugging (remove in production) -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="true">localhost</domain>
+    <domain includeSubdomains="true">127.0.0.1</domain>
+    <domain includeSubdomains="true">10.0.2.2</domain>
+  </domain-config>
+
+  <!-- Certificate pinning for critical API endpoints -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">api.supabase.io</domain>
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </domain-config>
+
+  <!-- Stricter policy for auth endpoints -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">auth.uniquewellness.com</domain>
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+    <pin-set expiration="2026-12-31">
+      <!-- Add certificate pins here for production -->
+      <!-- <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin> -->
+    </pin-set>
+  </domain-config>
+</network-security-config>

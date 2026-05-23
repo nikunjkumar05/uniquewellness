@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.uniquewellness.app">
+
+  <!-- Permissions Required -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+  
+  <!-- Camera & Photo Library Permissions (Optional - for future features) -->
+  <!-- <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> -->
+  
+  <!-- Geolocation Permissions (Optional) -->
+  <!-- <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> -->
+  
+  <!-- Push Notification Permissions (Optional) -->
+  <!-- <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> -->
+
+  <application>
+    <!-- Disable cleartext traffic (HTTPS enforced) -->
+    <domain-config cleartextTrafficPermitted="false">
+      <domain includeSubdomains="true">supabase.co</domain>
+      <domain includeSubdomains="true">uniquewellness.com</domain>
+    </domain-config>
+
+    <!-- Activity Configuration -->
+    <activity android:name="MainActivity" 
+      android:exported="true"
+      android:launchMode="singleTask"
+      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|uiMode"
+      android:windowSoftInputMode="adjustResize">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+
+    <!-- WebView Configuration -->
+    <meta-data
+      android:name="com.google.android.gms.version"
+      android:value="@integer/google_play_services_version" />
+  </application>
+</manifest>
