@@ -54,27 +54,36 @@ export function Parallax({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef<number>(0);
+  const lastRef = useRef<number>(0);
+  const frameCountRef = useRef<number>(0);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let raf = 0;
-    let last = 0;
+
     const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
+      // Skip frames for better performance on mobile (every 2nd frame)
+      frameCountRef.current++;
+      if (frameCountRef.current % 2 !== 0) return;
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
         const rect = el.getBoundingClientRect();
         const target = (rect.top + rect.height / 2 - window.innerHeight / 2) * -speed;
-        last = last + (target - last) * 0.12;
-        el.style.transform = `translate3d(0, ${last.toFixed(1)}px, 0)`;
+        lastRef.current = lastRef.current + (target - lastRef.current) * 0.12;
+        el.style.transform = `translate3d(0, ${lastRef.current.toFixed(1)}px, 0)`;
       });
     };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [speed]);
+
   return (
     <div ref={ref} className={className} style={{ willChange: "transform" }}>
       {children}

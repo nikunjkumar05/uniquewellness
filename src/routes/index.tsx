@@ -148,6 +148,7 @@ function HomePage() {
                     src={pamphlet}
                     alt="Mr. Vivek Rane — International Chess Coach"
                     className="w-full h-auto rounded-[22px] object-cover"
+                    loading="lazy"
                   />
                   <div className="absolute -bottom-5 -left-5 glass-tint rounded-2xl px-4 py-3 hidden sm:flex items-center gap-3">
                     <Trophy className="text-primary" size={22} />
@@ -271,6 +272,7 @@ function HomePage() {
                 src={founder}
                 alt="Mrunal Kore — Founder"
                 className="h-full w-full object-cover min-h-[320px]"
+                loading="lazy"
               />
             </Parallax>
           </div>

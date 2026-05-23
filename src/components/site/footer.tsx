@@ -8,14 +8,18 @@ export function Footer() {
     <footer className="relative mt-24 px-3 sm:px-6 pb-6">
       <div className="glass-strong mx-auto max-w-6xl rounded-3xl p-8 md:p-12 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <img src={logo} alt="Unique Wellness Institute" className="h-12 w-auto" />
+          <img
+            src={logo}
+            alt="Unique Wellness Institute Logo"
+            className="h-12 w-auto"
+          />
           <p className="mt-4 text-sm text-muted-foreground max-w-md leading-relaxed">
             Chess mastery, career mentorship, and wellness — all under one roof. International
             coaching for kids 5–16 and personalised guidance for students and professionals.
           </p>
         </div>
-        <div>
-          <h4 className="font-display text-lg mb-3">Explore</h4>
+        <nav aria-label="Explore">
+          <h3 className="font-display text-lg mb-3">Explore</h3>
           <ul className="space-y-2 text-sm">
             <li>
               <Link to="/chess" className="text-muted-foreground hover:text-primary">
@@ -38,9 +42,9 @@ export function Footer() {
               </Link>
             </li>
           </ul>
-        </div>
+        </nav>
         <div>
-          <h4 className="font-display text-lg mb-3">Contact</h4>
+          <h3 className="font-display text-lg mb-3">Contact</h3>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <Phone size={15} className="mt-0.5 text-primary" />

@@ -88,6 +88,31 @@
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
   }
+  *:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .not-sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -258,9 +283,10 @@
     transition:
       transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
       box-shadow 0.35s;
+    will-change: transform, box-shadow;
   }
   .hover-lift:hover {
-    transform: translateY(-4px) scale(1.02);
+    transform: translate3d(0, -4px, 0) scale(1.02);
     box-shadow: var(--shadow-soft);
   }
   .text-gradient {
@@ -271,14 +297,15 @@
   }
   .reveal {
     opacity: 0;
-    transform: translateY(28px) scale(0.985);
+    transform: translate3d(0, 28px, 0) scale(0.985);
     transition:
       opacity 0.95s ease-out,
       transform 0.95s cubic-bezier(0.2, 0.8, 0.2, 1);
+    will-change: opacity, transform;
   }
   .reveal.in {
     opacity: 1;
-    transform: none;
+    transform: translate3d(0, 0, 0);
   }
   .pop-in {
     animation: pop-in 0.85s cubic-bezier(0.18, 0.88, 0.22, 1) both;
