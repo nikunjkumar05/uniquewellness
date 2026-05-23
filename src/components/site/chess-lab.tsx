@@ -120,6 +120,19 @@ function getMoveKey(move: Move): string {
   return `${move.from}-${move.to}-${move.san}`;
 }
 
+function extractFirstPgnGame(text: string): { text: string; multipleGames: boolean } {
+  const eventTagMatches = [...text.matchAll(/^\s*\[Event\s+/gm)];
+  if (eventTagMatches.length <= 1) {
+    return { text, multipleGames: false };
+  }
+
+  const nextGameStart = eventTagMatches[1]?.index ?? text.length;
+  return {
+    text: text.slice(0, nextGameStart).trim(),
+    multipleGames: true,
+  };
+}
+
 export function ChessLab() {
   const [viewMode, setViewMode] = useState<ViewMode>("play");
   const [liveGame, setLiveGame] = useState(() => new Chess());
@@ -367,11 +380,19 @@ export function ChessLab() {
 
   async function loadPgnText(text: string) {
     const imported = new Chess();
+    const normalizedText = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    const { text: pgnText, multipleGames } = extractFirstPgnGame(normalizedText);
+
     try {
-      imported.loadPgn(text, { newlineChar: "\n" });
-    } catch {
-      toast.error("That PGN could not be parsed.");
+      imported.loadPgn(pgnText);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "That PGN could not be parsed.";
+      toast.error(message);
       return;
+    }
+
+    if (multipleGames) {
+      toast("Multiple games detected. Loaded the first game only.");
     }
 
     const moves = imported.history({ verbose: true }) as Move[];
