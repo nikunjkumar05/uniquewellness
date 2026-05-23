@@ -25,7 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Download, Pencil, Trash2 } from "lucide-react";
+import { buildInvoiceNumber, downloadInvoicePdf } from "@/lib/invoice-pdf";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin Dashboard — UWI" }] }),
@@ -93,6 +94,16 @@ type Fee = {
   paid_at: string | null;
 };
 
+type InvoiceRecord = {
+  id: string;
+  fee_id: string | null;
+  student_id: string;
+  invoice_number: string;
+  amount: number;
+  issued_at: string;
+  pdf_url: string | null;
+};
+
 type PasswordRequest = {
   id: string;
   email: string;
@@ -122,11 +133,12 @@ function AdminDashboard() {
   const [classes, setClasses] = useState<LiveClass[]>([]);
   const [demos, setDemos] = useState<DemoBooking[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [passwordRequests, setPasswordRequests] = useState<PasswordRequest[]>([]);
   const [contactAlert, setContactAlert] = useState<DemoBooking | null>(null);
 
   async function reload() {
-    const [p, r, c, e, l, d, f] = await Promise.all([
+    const [p, r, c, e, l, d, f, inv] = await Promise.all([
       supabase.from("profiles").select("*"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("courses").select("*").order("created_at", { ascending: false }),
@@ -134,6 +146,10 @@ function AdminDashboard() {
       supabase.from("live_classes").select("*").order("scheduled_at", { ascending: false }),
       supabase.from("demo_bookings").select("*").order("created_at", { ascending: false }),
       supabase.from("fees").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("invoices")
+        .select("id, fee_id, student_id, invoice_number, amount, issued_at, pdf_url")
+        .order("issued_at", { ascending: false }),
     ]);
     
     // fetch password reset requests
@@ -145,6 +161,7 @@ function AdminDashboard() {
     if (l.data) setClasses(l.data as LiveClass[]);
     if (d.data) setDemos(d.data as DemoBooking[]);
     if (f.data) setFees(f.data as Fee[]);
+    if (inv.data) setInvoices(inv.data as InvoiceRecord[]);
     if (pr.data) setPasswordRequests(pr.data as PasswordRequest[]);
   }
 
@@ -279,7 +296,13 @@ function AdminDashboard() {
           />
         </TabsContent>
         <TabsContent value="fees">
-          <FeesPanel fees={fees} profiles={profiles} courses={courses} onChange={reload} />
+          <FeesPanel
+            fees={fees}
+            invoices={invoices}
+            profiles={profiles}
+            courses={courses}
+            onChange={reload}
+          />
         </TabsContent>
         <TabsContent value="demos">
           <DemoPanel demos={demos} onChange={reload} />
@@ -1081,11 +1104,13 @@ function EnrollmentsPanel({
 
 function FeesPanel({
   fees,
+  invoices,
   profiles,
   courses,
   onChange,
 }: {
   fees: Fee[];
+  invoices: InvoiceRecord[];
   profiles: Profile[];
   courses: Course[];
   onChange: () => void;
@@ -1142,6 +1167,30 @@ function FeesPanel({
     );
     if (error) throw error;
   }
+
+  async function downloadInvoice(f: Fee) {
+    const student = profiles.find((p) => p.user_id === f.student_id);
+    if (!student) return toast.error("Student not found");
+
+    const invoice = invoices.find((item) => item.fee_id === f.id);
+    if (!invoice && f.status !== "paid") {
+      return toast.error("Mark the fee as paid before downloading the invoice");
+    }
+
+    const course = courses.find((c) => c.id === f.course_id);
+    await downloadInvoicePdf({
+      invoiceNumber:
+        invoice?.invoice_number ?? buildInvoiceNumber(f.id, f.period),
+      issuedAt: invoice?.issued_at ?? f.paid_at ?? new Date().toISOString(),
+      studentName: student.full_name || student.email || "Student",
+      studentEmail: student.email || "",
+      courseTitle: course?.title || "Course invoice",
+      period: f.period,
+      amount: f.amount,
+      status: invoice ? "Paid" : f.status,
+    });
+  }
+
   async function toggleStatus(f: Fee) {
     const next = f.status === "paid" ? "unpaid" : "paid";
     const { error } = await supabase
@@ -1258,7 +1307,7 @@ function FeesPanel({
               <th>Period</th>
               <th>Amount</th>
               <th>Status</th>
-              <th></th>
+                <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -1279,9 +1328,19 @@ function FeesPanel({
                   </button>
                 </td>
                 <td>
-                  <Button size="sm" variant="outline" onClick={() => remove(f.id)}>
-                    <Trash2 size={14} />
-                  </Button>
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void downloadInvoice(f)}
+                      disabled={!invoices.find((item) => item.fee_id === f.id) && f.status !== "paid"}
+                    >
+                      <Download size={14} className="mr-2" /> PDF
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => remove(f.id)}>
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}

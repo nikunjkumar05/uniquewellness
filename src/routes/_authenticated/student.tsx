@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Download } from "lucide-react";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 
 export const Route = createFileRoute("/_authenticated/student")({
   head: () => ({ meta: [{ title: "Student Dashboard — UWI" }] }),
@@ -160,6 +162,24 @@ function StudentDashboard() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function downloadInvoice(invoiceId: string) {
+    const invoice = invoices.find((item) => item.id === invoiceId);
+    if (!invoice) return;
+    const fee = invoice.fee_id ? feeById.get(invoice.fee_id) : undefined;
+    const course = fee?.course_id ? courseById.get(fee.course_id) : undefined;
+
+    await downloadInvoicePdf({
+      invoiceNumber: invoice.invoice_number,
+      issuedAt: invoice.issued_at,
+      studentName: user?.email || "Student",
+      studentEmail: user?.email || "",
+      courseTitle: course?.title || "Course invoice",
+      period: fee?.period || "—",
+      amount: invoice.amount,
+      status: fee?.status || "paid",
+    });
+  }
+
   async function copyInvoiceNumber(invoiceNumber: string) {
     try {
       await navigator.clipboard.writeText(invoiceNumber);
@@ -213,6 +233,14 @@ function StudentDashboard() {
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => openInvoice(invoice.id)} className="font-bold">
                     Open invoice
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void downloadInvoice(invoice.id)}
+                    className="font-bold"
+                  >
+                    <Download size={14} className="mr-2" /> Download PDF
                   </Button>
                   <Button
                     size="sm"
