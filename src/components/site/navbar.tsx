@@ -86,11 +86,12 @@ export function Navbar() {
         <div className="flex items-center gap-3 lg:gap-4">
           <Link
             to="/"
-            className="group flex shrink-0 items-center gap-2 rounded-2xl px-1 py-1 transition-transform duration-500 hover:-translate-y-0.5"
+            className="group flex shrink-0 items-center gap-2 rounded-2xl px-1 py-1 transition-transform duration-500 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            aria-label="Unique Wellness Institute — Home"
           >
             <img
               src={logo}
-              alt="Unique Wellness Institute"
+              alt="Unique Wellness Institute Logo"
               className="h-9 w-auto transition-transform duration-500 group-hover:scale-[1.04] group-hover:rotate-[-1deg] sm:h-10"
             />
           </Link>

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/site/page-shell";
 import { Reveal } from "@/components/site/reveal";
-import { Phone, Mail, MapPin, Send } from "lucide-react";
+import { Phone, Mail, MapPin, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -135,13 +135,18 @@ function ContactPage() {
                 onChange={(v) => setForm({ ...form, email: v })}
               />
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label
+                  htmlFor="course-select"
+                  className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block"
+                >
                   Interested in
                 </label>
                 <select
+                  id="course-select"
                   value={form.course}
                   onChange={(e) => setForm({ ...form, course: e.target.value })}
-                  className="mt-2 w-full rounded-xl bg-white/70 backdrop-blur border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-2 w-full rounded-xl bg-white/70 backdrop-blur border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all"
+                  aria-label="Select a course"
                 >
                   <option>Beginner</option>
                   <option>Advanced Beginner</option>
@@ -153,23 +158,30 @@ function ContactPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label
+                  htmlFor="message-textarea"
+                  className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block"
+                >
                   Message (optional)
                 </label>
                 <textarea
+                  id="message-textarea"
                   rows={4}
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  className="mt-2 w-full rounded-xl bg-white/70 backdrop-blur border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-2 w-full rounded-xl bg-white/70 backdrop-blur border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all resize-none"
+                  aria-label="Additional message"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-2xl bg-primary text-primary-foreground px-6 py-3.5 text-sm font-semibold inline-flex items-center justify-center gap-2 hover-lift shadow-soft disabled:opacity-60"
+                className="w-full rounded-2xl bg-primary text-primary-foreground px-6 py-3.5 text-sm font-semibold inline-flex items-center justify-center gap-2 hover-lift shadow-soft disabled:opacity-60 disabled:pointer-events-none transition-all"
               >
                 {loading ? (
-                  "Sending…"
+                  <>
+                    <Loader2 size={15} className="animate-spin" /> Sending…
+                  </>
                 ) : (
                   <>
                     Submit <Send size={15} />
@@ -195,16 +207,22 @@ function Field({
   onChange: (v: string) => void;
   type?: string;
 }) {
+  const id = label.toLowerCase().replace(/\s+/g, "-");
   return (
     <div>
-      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+      <label
+        htmlFor={id}
+        className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block"
+      >
         {label}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-xl bg-white/70 backdrop-blur border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        className="mt-2 w-full rounded-xl bg-white/70 backdrop-blur border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all"
+        aria-label={label}
       />
     </div>
   );

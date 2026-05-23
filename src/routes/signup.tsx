@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Sign up — Unique Wellness Institute" }] }),
@@ -87,7 +88,13 @@ function SignupPage() {
               />
             </div>
             <Button type="submit" className="w-full font-bold" disabled={busy}>
-              {busy ? "Creating..." : "Create account"}
+              {busy ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Creating...
+                </>
+              ) : (
+                "Create account"
+              )}
             </Button>
           </form>
 

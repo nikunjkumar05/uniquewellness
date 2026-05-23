@@ -13,6 +13,22 @@ export function PageShell({
 }) {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
+      <a
+        href="#main-content"
+        className="absolute -top-full left-4 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-semibold focus:top-4"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '1rem';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Skip to main content
+      </a>
       {/* ambient blobs */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-primary-soft/70 blur-3xl animate-blob" />
@@ -27,7 +43,9 @@ export function PageShell({
         <div className="absolute left-1/2 top-24 h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-white/40 blur-3xl animate-float" />
       </div>
       {showNavbar && <Navbar />}
-      <main className={showNavbar ? "pt-24" : "pt-6"}>{children}</main>
+      <main id="main-content" className={showNavbar ? "pt-24" : "pt-6"}>
+        {children}
+      </main>
       {showFooter ? <Footer /> : null}
     </div>
   );
