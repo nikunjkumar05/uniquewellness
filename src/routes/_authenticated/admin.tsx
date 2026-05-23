@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { createStudentAccount } from "@/lib/admin.functions";
-import { getPasswordResetRedirectUrl } from "@/lib/auth-redirects";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,7 +115,6 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 function AdminDashboard() {
-  const { user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<{ user_id: string; role: string }[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -181,7 +178,18 @@ function AdminDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const activeTab = params.get("tab") || "users";
+  const allowedTabs = new Set([
+    "users",
+    "students",
+    "courses",
+    "classes",
+    "enrollments",
+    "fees",
+    "demos",
+    "password-requests",
+  ]);
+  const tabParam = params.get("tab");
+  const activeTab = tabParam && allowedTabs.has(tabParam) ? tabParam : "users";
 
   return (
     <div className="space-y-6">
@@ -261,9 +269,6 @@ function AdminDashboard() {
             onChange={reload}
           />
         </TabsContent>
-        <TabsContent value="account">
-          <AdminAccountPanel userEmail={user?.email ?? null} />
-        </TabsContent>
         <TabsContent value="enrollments">
           <EnrollmentsPanel
             enrollments={enrollments}
@@ -310,76 +315,6 @@ function AdminDashboard() {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function AdminAccountPanel({ userEmail }: { userEmail: string | null }) {
-  const [newEmail, setNewEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function changeEmail() {
-    if (!newEmail) return toast.error("New email is required");
-    setBusy(true);
-    const { error } = await supabase.auth.updateUser({ email: newEmail });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Verification email sent to the new address");
-    setNewEmail("");
-  }
-
-  async function sendPasswordReset() {
-    if (!userEmail) return toast.error("No signed-in admin email found");
-    setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-      redirectTo: getPasswordResetRedirectUrl(),
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Password reset email sent");
-  }
-
-  return (
-    <Card className="glass-premium rounded-2xl p-6 mt-4 max-w-2xl space-y-5">
-      <div>
-        <h2 className="text-2xl card-title">Account & security</h2>
-        <p className="text-sm text-muted-foreground">
-          Use Supabase Auth emails for verification. This works with free-tier email delivery once
-          your project email settings are configured.
-        </p>
-      </div>
-
-      <div className="space-y-3 rounded-2xl border border-border bg-background/60 p-4">
-        <div>
-          <Label>Current email</Label>
-          <Input value={userEmail || ""} disabled />
-        </div>
-        <div>
-          <Label>New email</Label>
-          <Input
-            type="email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            placeholder="admin@example.com"
-          />
-        </div>
-        <Button onClick={changeEmail} disabled={busy} className="font-bold">
-          Send email verification
-        </Button>
-      </div>
-
-      <div className="space-y-3 rounded-2xl border border-border bg-background/60 p-4">
-        <div>
-          <Label>Password reset</Label>
-          <p className="text-sm text-muted-foreground">
-            Send a reset link to the current admin email. After verifying the link, finish the
-            password change on the reset page.
-          </p>
-        </div>
-        <Button onClick={sendPasswordReset} disabled={busy} variant="outline" className="font-bold">
-          Email password reset link
-        </Button>
-      </div>
-    </Card>
   );
 }
 

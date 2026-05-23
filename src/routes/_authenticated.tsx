@@ -95,7 +95,6 @@ function AuthLayout() {
                     {adminTabLink("students", "Add Student")}
                     {adminTabLink("courses", "Courses")}
                     {adminTabLink("classes", "Live Classes")}
-                    {adminTabLink("account", "Account")}
                     {adminTabLink("enrollments", "Enrollments")}
                     {adminTabLink("fees", "Fees")}
                     {adminTabLink("demos", "Demo Bookings")}
