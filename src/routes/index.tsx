@@ -12,16 +12,16 @@ import founder from "@/assets/founder-mrunal.jpeg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Unique Wellness Institute — Chess Coaching & Career Guidance" },
+      { title: "Unique Wellness Institute — Play Chess & Career Guidance" },
       {
         name: "description",
         content:
-          "International chess coaching for kids 5–16, career mentorship, and wellness. Learn from Mr. Vivek Rane and book a demo class today.",
+          "Play chess with international guidance for kids 5–16, career mentorship, and wellness. Learn from Mr. Vivek Rane and book a demo class today.",
       },
       { property: "og:title", content: "Unique Wellness Institute" },
       {
         property: "og:description",
-        content: "Chess Coaching & Career Guidance — Kandivali West, Mumbai.",
+        content: "Play Chess & Career Guidance — Kandivali West, Mumbai.",
       },
     ],
   }),
@@ -107,7 +107,7 @@ function HomePage() {
             </Reveal>
             <Reveal delay={220}>
               <p className="mt-5 text-lg text-muted-foreground max-w-xl leading-relaxed">
-                Premium chess coaching, career mentorship, and wellness — guided by experienced
+                Play chess, career mentorship, and wellness — guided by experienced
                 international coaches. Built for students who want depth, not noise.
               </p>
             </Reveal>
@@ -187,7 +187,7 @@ function HomePage() {
                 Built on experience, driven by passion
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Unique Wellness Institute combines world-class chess coaching, career mentorship,
+                Unique Wellness Institute combines world-class chess guidance, career mentorship,
                 and wellness — all under one roof.
               </p>
             </div>
@@ -282,7 +282,7 @@ function HomePage() {
                 Mrunal Kore — multi-disciplinary professional with experience across hospitality,
                 F&B, sales, marketing, and training. From serving heads of state at Saudi's king
                 palace to leading a top-performing CSA team at JP Morgan Chase, his journey now
-                centers on chess coaching for kids and career support for students.
+                centers on playing chess for kids and career support for students.
               </p>
               <Link
                 to="/founder"

@@ -31,11 +31,16 @@ export function Reveal({
     io.observe(el);
     return () => io.disconnect();
   }, [delay]);
-  // @ts-expect-error dynamic tag
+  const Component = Tag as React.ElementType<{
+    ref?: React.Ref<HTMLElement>;
+    className?: string;
+    children?: ReactNode;
+  }>;
+
   return (
-    <Tag ref={ref} className={`reveal ${pop ? "pop-in" : ""} ${className}`}>
+    <Component ref={ref} className={`reveal ${pop ? "pop-in" : ""} ${className}`}>
       {children}
-    </Tag>
+    </Component>
   );
 }
 

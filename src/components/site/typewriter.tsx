@@ -18,24 +18,30 @@ export function Typewriter({
   const [del, setDel] = useState(false);
 
   useEffect(() => {
+    if (words.length === 0) return;
+
     const word = words[i % words.length];
     const speed = del ? deletingSpeed : typingSpeed;
+    const wordComplete = !del && text === word;
+    const wordDeleted = del && text === "";
+
     const t = setTimeout(() => {
-      if (!del) {
-        const next = word.slice(0, text.length + 1);
-        setText(next);
-        if (next === word) setTimeout(() => setDel(true), pauseMs);
-      } else {
-        const next = word.slice(0, text.length - 1);
-        setText(next);
-        if (next === "") {
-          setDel(false);
-          setI((v) => v + 1);
-        }
+      if (wordComplete) {
+        setDel(true);
+        return;
       }
-    }, speed);
+
+      if (wordDeleted) {
+        setDel(false);
+        setI((v) => v + 1);
+        return;
+      }
+
+      setText(del ? word.slice(0, text.length - 1) : word.slice(0, text.length + 1));
+    }, wordComplete ? pauseMs : speed);
+
     return () => clearTimeout(t);
-  }, [text, del, i, words]);
+  }, [deletingSpeed, del, i, pauseMs, text, typingSpeed, words]);
 
   return (
     <span className={className}>

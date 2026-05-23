@@ -29,7 +29,7 @@ function StudentDashboard() {
     }[]
   >([]);
   const [fees, setFees] = useState<
-    { id: string; amount: number; period: string; status: string }[]
+    { id: string; amount: number; period: string; status: string; course_id: string | null }[]
   >([]);
   const [invoices, setInvoices] = useState<
     {

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/founder")({
       { property: "og:title", content: "Founder — Mrunal Kore" },
       {
         property: "og:description",
-        content: "From JP Morgan Chase to chess coaching — Mrunal Kore's story.",
+        content: "From JP Morgan Chase to Play Chess — Mrunal Kore's story.",
       },
     ],
   }),
@@ -31,7 +31,7 @@ const paragraphs = [
   "Been a part of F&B service in Saudi's king palace thrice. Entire countries' presidents & kings are invited for the annual meeting.",
   "In the 3rd event I was a part of serving honourable Donald Trump. He was the prime minister of USA at that time.",
   "Started with a small training center and kept expanding gradually.",
-  "Now there are multiple services provided from my end. Prime focus is on Chess coaching for kids & Career support.",
+  "Now there are multiple services provided from my end. Prime focus is on Play Chess for kids & Career support.",
 ];
 
 function FounderPage() {

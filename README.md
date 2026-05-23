@@ -4,7 +4,7 @@ Unique Wellness Institute is a TanStack Start web application for a coaching and
 
 ## Features
 
-- Public pages for chess coaching, career guidance, wellness programs, founder profile, demo booking, and contact.
+- Public pages for playing chess, career guidance, wellness programs, founder profile, demo booking, and contact.
 - Email/password and Google-based auth flows with forgot/reset password screens.
 - Protected dashboard shell with role-specific student, coach, admin, content, settings, and live-room pages.
 - Supabase integration for auth, profiles, roles, enrollments, courses, live classes, content, and testimonials.
@@ -124,7 +124,7 @@ supabase/
 ## Main Routes
 
 - `/` - home page
-- `/chess` - chess coaching
+- `/chess` - play chess
 - `/career` - career guidance
 - `/wellness` - wellness programs
 - `/founder` - founder profile

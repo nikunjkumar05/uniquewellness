@@ -19,7 +19,7 @@ export function Footer() {
           <ul className="space-y-2 text-sm">
             <li>
               <Link to="/chess" className="text-muted-foreground hover:text-primary">
-                Chess Coaching
+                Play Chess
               </Link>
             </li>
             <li>

@@ -219,7 +219,7 @@ function AdminDashboard() {
             <Button
               onClick={() => {
                 setContactAlert(null);
-                navigate({ to: "/admin?tab=demos" });
+                navigate({ to: "/admin", search: { tab: "demos" } });
               }}
               className="font-bold"
             >
@@ -241,7 +241,7 @@ function AdminDashboard() {
         <StatCard label="Unpaid fees" value={unpaidCount} />
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => navigate({ to: `/admin?tab=${v}` })}>
+      <Tabs value={activeTab} onValueChange={(tab) => navigate({ to: "/admin", search: { tab } })}>
 
         <TabsContent value="users">
           <UsersPanel profiles={profiles} roles={roles} onChange={reload} />

@@ -58,7 +58,8 @@ function AuthLayout() {
                   "px-3 py-2 rounded-xl font-semibold bg-primary-soft text-foreground";
                 const adminTabLink = (tab: string, label: string) => (
                   <Link
-                    to={`/admin?tab=${tab}`}
+                    to="/admin"
+                    search={{ tab }}
                     className={isTabActive(tab) ? activeClass : linkClass}
                   >
                     {label}
@@ -132,7 +133,15 @@ function AuthLayout() {
   );
 }
 
-function DashLink({ to, label, hide }: { to: string; label: string; hide?: boolean }) {
+function DashLink({
+  to,
+  label,
+  hide,
+}: {
+  to: "/" | "/admin" | "/content" | "/coach" | "/student" | "/live-room" | "/settings";
+  label: string;
+  hide?: boolean;
+}) {
   if (hide) return null;
   return (
     <Link

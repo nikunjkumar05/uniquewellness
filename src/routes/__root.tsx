@@ -73,29 +73,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Unique Wellness Institute — Chess Coaching & Career Guidance" },
+      { title: "Unique Wellness Institute — Play Chess & Career Guidance" },
       {
         name: "description",
-        content: "International chess coaching, career mentorship, and wellness — Mumbai, India.",
+        content: "Play chess, career mentorship, and wellness — Mumbai, India.",
       },
       { name: "theme-color", content: "#89AB21" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:title",
-        content: "Unique Wellness Institute — Chess Coaching & Career Guidance",
+        content: "Unique Wellness Institute — Play Chess & Career Guidance",
       },
       {
         name: "twitter:title",
-        content: "Unique Wellness Institute — Chess Coaching & Career Guidance",
+        content: "Unique Wellness Institute — Play Chess & Career Guidance",
       },
       {
         property: "og:description",
-        content: "International chess coaching, career mentorship, and wellness — Mumbai, India.",
+        content: "Play chess, career mentorship, and wellness — Mumbai, India.",
       },
       {
         name: "twitter:description",
-        content: "International chess coaching, career mentorship, and wellness — Mumbai, India.",
+        content: "Play chess, career mentorship, and wellness — Mumbai, India.",
       },
       {
         property: "og:image",

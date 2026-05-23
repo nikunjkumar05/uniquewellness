@@ -253,6 +253,39 @@ export type Database = {
           },
         ];
       };
+      password_reset_requests: {
+        Row: {
+          consent: boolean;
+          created_at: string;
+          email: string;
+          full_name: string | null;
+          id: string;
+          new_password_hash: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          consent?: boolean;
+          created_at?: string;
+          email: string;
+          full_name?: string | null;
+          id?: string;
+          new_password_hash: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          consent?: boolean;
+          created_at?: string;
+          email?: string;
+          full_name?: string | null;
+          id?: string;
+          new_password_hash?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       live_classes: {
         Row: {
           coach_id: string | null;
