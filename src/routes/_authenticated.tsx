@@ -104,6 +104,7 @@ function AuthLayout() {
               })()
             ) : (
               <>
+                <DashLink to="/" label="Home" />
                 {role === "admin" && <DashLink to="/admin" label="Admin" />}
                 {role === "admin" && <DashLink to="/content" label="Content" />}
                 {role === "coach" && <DashLink to="/coach" label="Coach" />}
@@ -157,4 +158,3 @@ function DashLink({
     </Link>
   );
 }
-
