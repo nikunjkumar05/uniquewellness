@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { PwaManager } from "@/components/site/pwa-manager";
 
 import appCss from "../styles.css?url";
 
@@ -90,6 +91,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "Unique Wellness" },
       { title: "Unique Wellness Institute — Play Chess & Career Guidance" },
       {
         name: "description",
@@ -126,6 +131,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Alumni+Sans:wght@300;400;500;600;700;800;900&display=swap",
@@ -160,6 +166,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <PwaManager />
       <Outlet />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>

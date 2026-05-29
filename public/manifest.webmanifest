@@ -1,0 +1,40 @@
+{
+  "name": "Unique Wellness Institute",
+  "short_name": "Unique Wellness",
+  "description": "Chess coaching, career guidance, and wellness support from Unique Wellness Institute.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#89AB21",
+  "orientation": "portrait-primary",
+  "categories": ["education", "health", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Practice Lab",
+      "short_name": "Practice",
+      "url": "/practice-lab",
+      "description": "Open the chess practice lab"
+    },
+    {
+      "name": "Book Demo",
+      "short_name": "Demo",
+      "url": "/contact",
+      "description": "Book a demo class"
+    }
+  ]
+}

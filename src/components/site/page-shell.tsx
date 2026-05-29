@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import { useLocation } from "@tanstack/react-router";
 import { Navbar } from "./navbar";
 import { Footer } from "./footer";
+import { BottomNavigation } from "./bottom-navigation";
 
 export function PageShell({
   children,
@@ -11,6 +13,8 @@ export function PageShell({
   showNavbar?: boolean;
   showFooter?: boolean;
 }) {
+  const location = useLocation();
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
       <a
@@ -43,9 +47,15 @@ export function PageShell({
         <div className="absolute left-1/2 top-24 h-[180px] w-[180px] -translate-x-1/2 rounded-full bg-white/40 blur-3xl animate-float" />
       </div>
       {showNavbar && <Navbar />}
-      <main id="main-content" className={showNavbar ? "pt-24" : "pt-6"}>
-        {children}
+      <main
+        id="main-content"
+        className={`${showNavbar ? "pt-24 pb-28 lg:pb-0" : "pt-6"} app-page-frame`}
+      >
+        <div key={location.pathname} className="app-page-transition">
+          {children}
+        </div>
       </main>
+      {showNavbar && <BottomNavigation />}
       {showFooter ? <Footer /> : null}
     </div>
   );

@@ -91,6 +91,35 @@ npm run build
 npm run preview
 ```
 
+## Android App
+
+This project includes a Capacitor Android wrapper. The web app is SSR-based, so the Android app should load a deployed HTTPS URL instead of packaging `dist/client` as an offline static app.
+
+### Requirements
+
+- Android Studio or Android SDK installed
+- `ANDROID_HOME` pointing to the SDK path, or `android/local.properties` containing `sdk.dir=C:\\Users\\your-user\\AppData\\Local\\Android\\Sdk`
+- A deployed app URL, for example `https://your-domain.com`
+
+### Build a Debug APK
+
+In PowerShell:
+
+```powershell
+$env:CAPACITOR_SERVER_URL="https://your-domain.com"
+npm run android:sync
+cd android
+.\gradlew.bat assembleDebug
+```
+
+The debug APK will be created at:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+For an Android emulator that should load the local dev server, use `http://10.0.2.2:8080` as `CAPACITOR_SERVER_URL` while `npm run dev` is running.
+
 ## Scripts
 
 | Command             | Purpose                                        |
@@ -99,6 +128,9 @@ npm run preview
 | `npm run build`     | Build the production client and server output. |
 | `npm run build:dev` | Build using development mode.                  |
 | `npm run preview`   | Preview the production build locally.          |
+| `npm run android:sync` | Sync Capacitor assets/config to Android.     |
+| `npm run android:open` | Open the Android project in Android Studio.  |
+| `npm run android:build:debug` | Build a debug APK.                    |
 | `npm run lint`      | Run ESLint.                                    |
 | `npm run format`    | Auto-fix lint issues with ESLint.              |
 
