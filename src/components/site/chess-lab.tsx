@@ -38,6 +38,20 @@ const pieceNameMap: Record<PieceSymbol, string> = {
   k: "king",
 };
 
+function publicAssetPath(path: string): string {
+  const base = import.meta.env.BASE_URL || "/";
+  return `${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+}
+
+function getPieceImageSrc(piece: { color: "w" | "b"; type: PieceSymbol }): string {
+  const color = piece.color === "w" ? "white" : "black";
+  return publicAssetPath(`${color}/${pieceNameMap[piece.type]}.png`);
+}
+
+const pieceImageSources = (["w", "b"] as const).flatMap((color) =>
+  (Object.keys(pieceNameMap) as PieceSymbol[]).map((type) => getPieceImageSrc({ color, type })),
+);
+
 type EngineState = {
   ready: boolean;
   thinking: boolean;
@@ -196,6 +210,13 @@ export function ChessLab() {
   useEffect(() => {
     liveGameRef.current = liveGame;
   }, [liveGame]);
+
+  useEffect(() => {
+    pieceImageSources.forEach((src) => {
+      const image = new Image();
+      image.src = src;
+    });
+  }, []);
 
   useEffect(() => {
     const worker = new Worker(STOCKFISH_ENGINE_URL);
@@ -626,14 +647,27 @@ export function ChessLab() {
                               {piece && (
                                 (() => {
                                   const name = pieceNameMap[piece.type];
-                                  const src = `${piece.color === "w" ? "/white" : "/black"}/${name}.png`;
+                                  const src = getPieceImageSrc(piece);
                                   return (
-                                    <span className={`relative z-10 inline-flex h-[84%] w-[84%] items-center justify-center ${
-                                      piece.color === "w"
-                                        ? "drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]"
-                                        : "drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]"
-                                    }`}>
-                                      <img src={src} alt={`${piece.color === "w" ? "white" : "black"} ${name}`} className="h-full w-full object-contain" />
+                                    <span
+                                      aria-label={`${piece.color === "w" ? "white" : "black"} ${name}`}
+                                      className={`relative z-10 inline-flex h-[84%] w-[84%] items-center justify-center ${
+                                        piece.color === "w"
+                                          ? "drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]"
+                                          : "drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]"
+                                      }`}
+                                    >
+                                      <img
+                                        src={src}
+                                        alt=""
+                                        aria-hidden="true"
+                                        draggable={false}
+                                        decoding="async"
+                                        className="block h-full w-full select-none object-contain"
+                                        onError={(event) => {
+                                          event.currentTarget.style.visibility = "hidden";
+                                        }}
+                                      />
                                     </span>
                                   );
                                 })()
