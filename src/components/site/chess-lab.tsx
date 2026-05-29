@@ -13,6 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { unzipSync } from "fflate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,16 @@ type EngineState = {
 
 type ViewMode = "play" | "replay";
 type EngineLevel = keyof typeof ENGINE_LEVELS;
+type ZipLessonFile = {
+  path: string;
+  label: string;
+  iniPath: string | null;
+};
+type ReplayPosition = {
+  fen: string;
+  label: string;
+  note: string | null;
+};
 
 function createEmptyEngineState(): EngineState {
   return {
@@ -131,11 +142,53 @@ export function ChessLab() {
   const pendingAutoMoveRef = useRef(false);
 
   const [replayMoves, setReplayMoves] = useState<Move[]>([]);
+  const [replayPositions, setReplayPositions] = useState<ReplayPosition[]>([]);
   const [replayIndex, setReplayIndex] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(1);
   const [replayName, setReplayName] = useState<string | null>(null);
   const [pastedPgn, setPastedPgn] = useState("");
+  const [uploadMode, setUploadMode] = useState<"pgn" | "course-zip">("pgn");
+  const [zipEntries, setZipEntries] = useState<Record<string, Uint8Array> | null>(null);
+  const [zipLessonFiles, setZipLessonFiles] = useState<ZipLessonFile[]>([]);
+  const [selectedZipPgn, setSelectedZipPgn] = useState<string | null>(null);
+  const [selectedIniContent, setSelectedIniContent] = useState<string | null>(null);
+  const [trainingWithClock, setTrainingWithClock] = useState<boolean | null>(null);
+  const [randomTrainingFlag, setRandomTrainingFlag] = useState<boolean | null>(null);
+  const [stressTrainActive, setStressTrainActive] = useState<boolean | null>(null);
+
+  function parseIni(text: string): Record<string, Record<string, string>> {
+    const result: Record<string, Record<string, string>> = {};
+    let current: string | null = null;
+    text.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith(";")) return;
+      const sec = trimmed.match(/^\[(.+)\]$/);
+      if (sec) {
+        current = sec[1];
+        result[current] = result[current] || {};
+        return;
+      }
+      const kv = trimmed.match(/^([^=]+)=(.*)$/);
+      if (kv && current) {
+        const k = kv[1].trim();
+        const v = kv[2].trim();
+        result[current][k] = v;
+      }
+    });
+    return result;
+  }
+
+  function applyConfigFromIni(parsed: Record<string, Record<string, string>>) {
+    const environ = parsed["Environ"] || {};
+    const toBool = (v?: string) => (v === undefined ? null : v === "1" || v.toLowerCase() === "true");
+    const tClock = toBool(environ["TrainingWithClock"]);
+    const rnd = toBool(environ["RandomTraining"]);
+    const stress = toBool(environ["StressTrainActive"]);
+    setTrainingWithClock(tClock);
+    setRandomTrainingFlag(rnd);
+    setStressTrainActive(stress);
+  }
   const [engineAssist, setEngineAssist] = useState(true);
   const [enginePlay, setEnginePlay] = useState(true);
   const [engineLevel, setEngineLevel] = useState<EngineLevel>("Medium");
@@ -241,14 +294,15 @@ export function ChessLab() {
   }, [engineAssist, engine.ready, engineLevel, enginePlay, liveGame, viewMode]);
 
   useEffect(() => {
-    if (viewMode !== "replay" || !replayPlaying || replayIndex >= replayMoves.length) return;
+    const lastReplayIndex = replayPositions.length ? replayPositions.length - 1 : replayMoves.length;
+    if (viewMode !== "replay" || !replayPlaying || replayIndex >= lastReplayIndex) return;
     const interval = window.setInterval(() => {
       setReplayIndex((current) => {
-        if (current >= replayMoves.length) {
+        if (current >= lastReplayIndex) {
           return current;
         }
         const next = current + 1;
-        if (next >= replayMoves.length) {
+        if (next >= lastReplayIndex) {
           window.clearInterval(interval);
           setReplayPlaying(false);
         }
@@ -257,9 +311,20 @@ export function ChessLab() {
     }, Math.max(250, 3000 / replaySpeed));
 
     return () => window.clearInterval(interval);
-  }, [replayIndex, replayMoves.length, replayPlaying, replaySpeed, viewMode]);
+  }, [replayIndex, replayMoves.length, replayPlaying, replayPositions.length, replaySpeed, viewMode]);
 
-  const currentGame = viewMode === "replay" ? cloneGameFromMoves(replayMoves, replayIndex) : liveGame;
+  const currentReplayPosition =
+    viewMode === "replay" && replayPositions.length
+      ? replayPositions[Math.min(replayIndex, replayPositions.length - 1)]
+      : null;
+  const currentGame =
+    viewMode === "replay"
+      ? currentReplayPosition
+        ? new Chess(currentReplayPosition.fen)
+        : cloneGameFromMoves(replayMoves, replayIndex)
+      : liveGame;
+  const replayStepCount = replayPositions.length ? replayPositions.length : replayMoves.length;
+  const replayLastIndex = replayPositions.length ? replayPositions.length - 1 : replayMoves.length;
   const history = currentGame.history({ verbose: true }) as Move[];
   const lastMove = history[history.length - 1] ?? null;
   const legalMoves = useMemo(() => {
@@ -367,11 +432,32 @@ export function ChessLab() {
   async function loadPgnText(text: string) {
     const imported = new Chess();
     const normalizedText = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    const lessonPositions = buildReplayPositionsFromPgn(normalizedText);
+
+    if (lessonPositions.length > 1) {
+      setReplayPositions(lessonPositions);
+      setReplayMoves([]);
+      setReplayIndex(0);
+      setReplayPlaying(false);
+      switchToReplayMode();
+      toast.success(`Loaded ${lessonPositions.length} lesson positions.`);
+      return;
+    }
+
     const { text: pgnText, multipleGames } = extractFirstPgnGame(normalizedText);
 
     try {
       imported.loadPgn(pgnText);
     } catch (error) {
+      if (lessonPositions.length === 1) {
+        setReplayPositions(lessonPositions);
+        setReplayMoves([]);
+        setReplayIndex(0);
+        setReplayPlaying(false);
+        switchToReplayMode();
+        toast.success("Loaded lesson position.");
+        return;
+      }
       const message = error instanceof Error ? error.message : "That PGN could not be parsed.";
       toast.error(message);
       return;
@@ -382,10 +468,20 @@ export function ChessLab() {
     }
 
     const moves = imported.history({ verbose: true }) as Move[];
+    if (lessonPositions.length === 1 && moves.length === 0) {
+      setReplayPositions(lessonPositions);
+      setReplayMoves([]);
+      setReplayIndex(0);
+      setReplayPlaying(false);
+      switchToReplayMode();
+      toast.success("Loaded lesson position.");
+      return;
+    }
+
+    setReplayPositions([]);
     setReplayMoves(moves);
     setReplayIndex(0);
     setReplayPlaying(false);
-    setReplayName(null);
     switchToReplayMode();
     toast.success("PGN loaded. Use replay controls to step through the game.");
   }
@@ -393,6 +489,61 @@ export function ChessLab() {
   async function onUpload(file: File) {
     const text = await file.text();
     setReplayName(file.name);
+    await loadPgnText(text);
+  }
+
+  async function loadZipFile(file: File) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const entries = unzipSync(new Uint8Array(buffer));
+      const lessonFiles = getZipLessonFiles(entries);
+
+      setZipEntries(entries);
+      setZipLessonFiles(lessonFiles);
+      setSelectedZipPgn(lessonFiles[0]?.path ?? null);
+      setSelectedIniContent(null);
+      setTrainingWithClock(null);
+      setRandomTrainingFlag(null);
+      setStressTrainActive(null);
+      setReplayName(file.name);
+
+      if (!lessonFiles.length) {
+        toast.error("No PGN files were found in this ZIP.");
+        return;
+      }
+
+      toast.success(`Found ${lessonFiles.length} PGN lessons in ${file.name}.`);
+    } catch {
+      toast.error("Could not read ZIP file.");
+    }
+  }
+
+  async function loadSelectedZipLesson() {
+    if (!zipEntries || !selectedZipPgn) return;
+
+    const pgnData = getZipEntry(zipEntries, selectedZipPgn);
+    if (!pgnData) {
+      toast.error("Selected lesson was not found in the ZIP.");
+      return;
+    }
+
+    const lesson = zipLessonFiles.find((file) => file.path === selectedZipPgn);
+    if (lesson?.iniPath) {
+      const iniData = getZipEntry(zipEntries, lesson.iniPath);
+      if (iniData) {
+        const iniText = new TextDecoder().decode(iniData);
+        setSelectedIniContent(iniText);
+        applyConfigFromIni(parseIni(iniText));
+      }
+    } else {
+      setSelectedIniContent(null);
+      setTrainingWithClock(null);
+      setRandomTrainingFlag(null);
+      setStressTrainActive(null);
+    }
+
+    const text = new TextDecoder().decode(pgnData);
+    setReplayName(lesson?.label ?? selectedZipPgn);
     await loadPgnText(text);
   }
 
@@ -525,7 +676,7 @@ export function ChessLab() {
                         type="button"
                         onClick={() => {
                           if (viewMode === "replay") {
-                            if (replayMoves.length === 0) return;
+                            if (replayStepCount === 0) return;
                             setReplayPlaying((value) => !value);
                             return;
                           }
@@ -548,12 +699,12 @@ export function ChessLab() {
                         type="button"
                         onClick={() => {
                           if (viewMode === "replay") {
-                            setReplayIndex((value) => Math.min(replayMoves.length, value + 1));
+                            setReplayIndex((value) => Math.min(replayLastIndex, value + 1));
                           }
                         }}
                         className="rounded-full px-2 py-1.5 transition hover:bg-muted/70 disabled:opacity-40"
                         aria-label="Next move"
-                        disabled={viewMode !== "replay" || replayIndex >= replayMoves.length}
+                        disabled={viewMode !== "replay" || replayIndex >= replayLastIndex}
                       >
                         <ChevronRight size={18} />
                       </button>
@@ -561,7 +712,7 @@ export function ChessLab() {
                         type="button"
                         onClick={() => {
                           setViewMode("replay");
-                          setReplayIndex(replayMoves.length);
+                          setReplayIndex(replayLastIndex);
                           setReplayPlaying(false);
                         }}
                         className="rounded-full px-2 py-1.5 transition hover:bg-muted/70"
@@ -571,9 +722,29 @@ export function ChessLab() {
                       </button>
                     </div>
                     <div className="text-xs font-medium text-muted-foreground">
-                      Move {viewMode === "replay" ? replayIndex : history.length} / {viewMode === "replay" ? replayMoves.length : history.length}
+                      {replayPositions.length && viewMode === "replay"
+                        ? `Position ${replayIndex + 1} / ${replayStepCount}`
+                        : `Move ${viewMode === "replay" ? replayIndex : history.length} / ${
+                            viewMode === "replay" ? replayStepCount : history.length
+                          }`}
                     </div>
                   </div>
+
+                  {currentReplayPosition && (
+                    <div className="rounded-[20px] border border-border/60 bg-white/55 p-4">
+                      <div className="text-xs font-bold uppercase tracking-[0.28em] text-muted-foreground">
+                        Lesson position
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-foreground">
+                        {currentReplayPosition.label}
+                      </div>
+                      {currentReplayPosition.note && (
+                        <p className="mt-2 max-h-32 overflow-auto text-sm leading-relaxed text-muted-foreground">
+                          {currentReplayPosition.note}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="rounded-[20px] border border-border/60 bg-white/55 p-4">
                     <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.28em] text-muted-foreground">
@@ -640,20 +811,80 @@ export function ChessLab() {
                         <div className="text-xs font-bold uppercase tracking-[0.28em] text-muted-foreground">
                           Upload PGN file
                         </div>
-                        <Input
-                          type="file"
-                          accept=".pgn,text/plain"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (file) {
-                              void onUpload(file);
-                            }
-                          }}
-                          className="mt-2 rounded-xl bg-background"
-                        />
-                        {replayName && (
-                          <p className="mt-2 text-xs text-muted-foreground">Loaded file: {replayName}</p>
-                        )}
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium">Mode:</label>
+                            <select
+                              value={uploadMode}
+                              onChange={(e) => setUploadMode(e.target.value as "pgn" | "course-zip")}
+                              className="h-9 rounded-xl border border-border/60 bg-background px-3 text-sm outline-none"
+                            >
+                              <option value="pgn">PGN file</option>
+                              <option value="course-zip">Courses ZIP</option>
+                            </select>
+                          </div>
+
+                          {uploadMode === "pgn" ? (
+                            <Input
+                              type="file"
+                              accept=".pgn,text/plain"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) {
+                                  void onUpload(file);
+                                }
+                              }}
+                              className="rounded-xl bg-background"
+                            />
+                          ) : (
+                            <div className="space-y-2">
+                              <Input
+                                type="file"
+                                accept=".zip"
+                                onChange={async (event) => {
+                                  const file = event.target.files?.[0];
+                                  if (file) {
+                                    await loadZipFile(file);
+                                  }
+                                }}
+                                className="rounded-xl bg-background"
+                              />
+
+                              {zipLessonFiles.length > 0 && (
+                                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                                  <select
+                                    value={selectedZipPgn ?? ""}
+                                    onChange={(e) => {
+                                      setSelectedZipPgn(e.target.value || null);
+                                    }}
+                                    className="h-9 min-w-0 rounded-xl border border-border/60 bg-background px-3 text-sm outline-none"
+                                  >
+                                    {zipLessonFiles.map((lesson) => (
+                                      <option key={lesson.path} value={lesson.path}>
+                                        {lesson.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <Button onClick={() => void loadSelectedZipLesson()} className="h-9 px-3">
+                                    Load
+                                  </Button>
+                                </div>
+                              )}
+
+                              {selectedIniContent && (
+                                <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                                  Config: clock {trainingWithClock ? "on" : "off"}, random{" "}
+                                  {randomTrainingFlag ? "on" : "off"}, stress training{" "}
+                                  {stressTrainActive ? "on" : "off"}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {replayName && (
+                            <p className="mt-2 text-xs text-muted-foreground">Loaded file: {replayName}</p>
+                          )}
+                        </div>
                       </div>
 
                       <div>
@@ -716,4 +947,102 @@ export function ChessLab() {
       </div>
     </section>
   );
+}
+
+function normalizeZipPath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+function getLessonLabel(path: string): string {
+  const filename = path.split("/").pop() ?? path;
+  return filename.replace(/\.[^.]+$/, "");
+}
+
+function getPgnBasePath(path: string): string {
+  return path.replace(/\.[^.]+$/, "");
+}
+
+function getIniPathForPgn(path: string, entries: Record<string, Uint8Array>): string | null {
+  const basePath = getPgnBasePath(path).toLowerCase();
+  return (
+    Object.keys(entries)
+      .map(normalizeZipPath)
+      .find((entryPath) => entryPath.toLowerCase() === `${basePath}.ini`) ?? null
+  );
+}
+
+function getZipLessonFiles(entries: Record<string, Uint8Array>): ZipLessonFile[] {
+  return Object.keys(entries)
+    .map(normalizeZipPath)
+    .filter((path) => path.toLowerCase().endsWith(".pgn"))
+    .sort((a, b) =>
+      a.localeCompare(b, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    )
+    .map((path) => ({
+      path,
+      label: getLessonLabel(path),
+      iniPath: getIniPathForPgn(path, entries),
+    }));
+}
+
+function getZipEntry(entries: Record<string, Uint8Array>, path: string): Uint8Array | null {
+  const normalizedPath = normalizeZipPath(path).toLowerCase();
+  const key = Object.keys(entries).find((entryPath) => normalizeZipPath(entryPath).toLowerCase() === normalizedPath);
+  return key ? entries[key] : null;
+}
+
+function splitPgnGames(text: string): string[] {
+  return text
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n?/g, "\n")
+    .split(/(?=^\s*\[Event\s+)/gm)
+    .map((game) => game.trim())
+    .filter(Boolean);
+}
+
+function readPgnTag(game: string, tag: string): string | null {
+  const match = game.match(new RegExp(`^\\[${tag}\\s+"([^"]*)"\\]`, "m"));
+  return match?.[1] ?? null;
+}
+
+function readFirstPgnComment(game: string): string | null {
+  const match = game.match(/\{([\s\S]*?)\}/);
+  if (!match?.[1]) return null;
+  return match[1].replace(/\s+/g, " ").trim();
+}
+
+function normalizeFen(fen: string): string {
+  const parts = fen.trim().split(/\s+/);
+  if (parts.length === 6 && Number(parts[5]) < 1) {
+    parts[5] = "1";
+  }
+  return parts.join(" ");
+}
+
+function buildReplayPositionsFromPgn(text: string): ReplayPosition[] {
+  return splitPgnGames(text).flatMap((game, index) => {
+    const rawFen = readPgnTag(game, "FEN");
+    if (!rawFen) return [];
+
+    try {
+      const fen = normalizeFen(rawFen);
+      const position = new Chess(fen);
+      const white = readPgnTag(game, "White");
+      const black = readPgnTag(game, "Black");
+      const label = [white, black].filter(Boolean).join(" - ") || `Position ${index + 1}`;
+
+      return [
+        {
+          fen: position.fen(),
+          label,
+          note: readFirstPgnComment(game),
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
 }
