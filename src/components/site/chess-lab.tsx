@@ -12,20 +12,6 @@ import {
   Save,
   Upload,
 } from "lucide-react";
-import {
-  FaChessBishop,
-  FaChessKing,
-  FaChessKnight,
-  FaChessPawn,
-  FaChessQueen,
-  FaChessRook,
-  FaRegChessBishop,
-  FaRegChessKing,
-  FaRegChessKnight,
-  FaRegChessPawn,
-  FaRegChessQueen,
-  FaRegChessRook,
-} from "react-icons/fa6";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -42,13 +28,13 @@ const ENGINE_LEVELS = {
 } as const;
 const STORAGE_KEY = "uwi.chess.saved-pgn";
 
-const pieceIcons: Record<PieceSymbol, Record<"w" | "b", typeof FaChessPawn>> = {
-  p: { w: FaRegChessPawn, b: FaChessPawn },
-  n: { w: FaRegChessKnight, b: FaChessKnight },
-  b: { w: FaRegChessBishop, b: FaChessBishop },
-  r: { w: FaRegChessRook, b: FaChessRook },
-  q: { w: FaRegChessQueen, b: FaChessQueen },
-  k: { w: FaRegChessKing, b: FaChessKing },
+const pieceNameMap: Record<PieceSymbol, string> = {
+  p: "pawn",
+  n: "knight",
+  b: "bishop",
+  r: "rook",
+  q: "queen",
+  k: "king",
 };
 
 type EngineState = {
@@ -488,16 +474,15 @@ export function ChessLab() {
                               )}
                               {piece && (
                                 (() => {
-                                  const PieceIcon = pieceIcons[piece.type][piece.color];
+                                  const name = pieceNameMap[piece.type];
+                                  const src = `${piece.color === "w" ? "/white" : "/black"}/${name}.png`;
                                   return (
-                                    <span
-                                      className={`relative z-10 inline-flex h-[84%] w-[84%] items-center justify-center ${
-                                        piece.color === "w"
-                                          ? "text-[#1b1b1b] drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]"
-                                          : "text-black drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]"
-                                      }`}
-                                    >
-                                      <PieceIcon className="h-full w-full" aria-hidden />
+                                    <span className={`relative z-10 inline-flex h-[84%] w-[84%] items-center justify-center ${
+                                      piece.color === "w"
+                                        ? "drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)]"
+                                        : "drop-shadow-[0_2px_3px_rgba(0,0,0,0.45)]"
+                                    }`}>
+                                      <img src={src} alt={`${piece.color === "w" ? "white" : "black"} ${name}`} className="h-full w-full object-contain" />
                                     </span>
                                   );
                                 })()
