@@ -24,10 +24,19 @@ type Course = {
   title: string;
 };
 
+const MINUTES_TO_MS = 60_000;
+const OPEN_CLASS_LABEL = "Open class";
+
+function getClassDurationMs(durationMin: number) {
+  return durationMin * MINUTES_TO_MS;
+}
+
 function LiveRoomPage() {
   const { role } = useAuth();
   const [classes, setClasses] = useState<LiveClass[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [now, setNow] = useState(() => Date.now());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const MODERATOR_URL =
     "https://uniquewellness.yourvideo.live/host/NmEwODYyNDlhZDJhNDcyYjU5MjE3ODY0LTZhMDg2MjE5YzIyYzRmNzMzNzA3NDNhZg==";
@@ -35,6 +44,7 @@ function LiveRoomPage() {
 
   useEffect(() => {
     (async () => {
+      setLoadError(null);
       const [classesResult, coursesResult] = await Promise.all([
         supabase
           .from("live_classes")
@@ -43,20 +53,29 @@ function LiveRoomPage() {
         supabase.from("courses").select("id, title"),
       ]);
 
+      if (classesResult.error || coursesResult.error) {
+        setLoadError(classesResult.error?.message || coursesResult.error?.message || "Failed to load live classes.");
+        return;
+      }
+
       setClasses((classesResult.data || []) as LiveClass[]);
       setCourses((coursesResult.data || []) as Course[]);
     })();
-  }, [role]);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const runningClasses = useMemo(() => {
-    const now = Date.now();
     return classes.filter((cls) => {
       if (cls.status === "ended") return false;
       const startsAt = new Date(cls.scheduled_at).getTime();
-      const endsAt = startsAt + cls.duration_min * 60_000;
+      const endsAt = startsAt + getClassDurationMs(cls.duration_min);
       return cls.status === "live" || (startsAt <= now && now < endsAt);
     });
-  }, [classes]);
+  }, [classes, now]);
 
   const courseById = useMemo(
     () => new Map(courses.map((course) => [course.id, course])),
@@ -78,18 +97,21 @@ function LiveRoomPage() {
 
       <Card className="glass-strong rounded-2xl p-5 space-y-4">
         <h2 className="text-2xl">Running classes</h2>
+        {loadError && <p className="text-sm text-destructive">{loadError}</p>}
         <div className="space-y-2">
           {runningClasses.map((cls) => {
             const courseTitle = cls.course_id ? courseById.get(cls.course_id)?.title : null;
-            const endsAt = new Date(new Date(cls.scheduled_at).getTime() + cls.duration_min * 60_000);
-            const remainingMin = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 60_000));
+            const endsAt = new Date(
+              new Date(cls.scheduled_at).getTime() + getClassDurationMs(cls.duration_min),
+            );
+            const remainingMin = Math.max(0, Math.ceil((endsAt.getTime() - now) / MINUTES_TO_MS));
 
             return (
               <div key={cls.id} className="glass rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <div className="font-semibold">{cls.title}</div>
                   <div className="text-xs text-muted-foreground">
-                    {courseTitle || "Open class"} · Ends in {remainingMin} min
+                    {courseTitle || OPEN_CLASS_LABEL} · Ends in {remainingMin} min
                   </div>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-primary text-primary-foreground">
