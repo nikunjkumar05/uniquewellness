@@ -79,7 +79,7 @@ export function Navbar() {
       }}
     >
       <nav
-        className={`glass-premium premium-panel pointer-events-auto mx-auto w-full max-w-6xl rounded-2xl border border-white/60 bg-white/70 px-4 sm:px-6 py-3 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.28)] backdrop-blur-3xl transition-all duration-300 ${
+        className={`pointer-events-auto mx-auto w-full max-w-6xl rounded-2xl border border-white/80 bg-white px-4 sm:px-6 py-3 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.22)] transition-all duration-300 ${
           scrolled ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.15)]" : ""
         }`}
       >
@@ -97,15 +97,15 @@ export function Navbar() {
           </Link>
 
           <div className="hidden flex-1 items-center justify-center lg:flex">
-            <ul className="flex items-center gap-1 rounded-full border border-white/60 bg-white/55 p-1 shadow-sm backdrop-blur-sm">
+            <ul className="flex items-center gap-1 rounded-full border border-white/80 bg-white p-1 shadow-sm">
               {links.map((l) => (
                 <li key={l.to}>
                   <Link
                     to={l.to}
-                    className="rounded-full px-3 py-2 text-sm font-medium text-foreground/72 transition hover:bg-white/70 hover:text-foreground"
+                    className="rounded-full px-3 py-2 text-sm font-medium text-foreground/72 transition hover:bg-primary-soft/70 hover:text-foreground"
                     activeProps={{
                       className:
-                        "rounded-full px-3 py-2 text-sm font-semibold text-foreground bg-white/85 shadow-sm",
+                        "rounded-full px-3 py-2 text-sm font-semibold text-foreground bg-primary-soft shadow-sm",
                     }}
                     activeOptions={{ exact: l.to === "/" }}
                   >
@@ -171,7 +171,7 @@ export function Navbar() {
       {open && (
         <div
           id="mobile-navigation"
-          className="lg:hidden mt-2 mx-auto w-full max-w-6xl glass-premium premium-panel rounded-2xl p-3 pointer-events-auto"
+          className="lg:hidden mt-2 mx-auto w-full max-w-6xl rounded-2xl border border-white/80 bg-white p-3 shadow-[0_20px_60px_-24px_rgba(15,23,42,0.18)] pointer-events-auto"
         >
           <div className="space-y-1">
             {links.map((l) => (
