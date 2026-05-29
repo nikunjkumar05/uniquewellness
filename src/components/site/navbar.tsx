@@ -102,7 +102,7 @@ export function Navbar() {
                 <li key={l.to}>
                   <Link
                     to={l.to}
-                    className="rounded-full px-3 py-2 text-sm font-medium text-foreground/72 transition hover:bg-primary-soft/70 hover:text-foreground"
+                    className="rounded-full px-3 py-2 text-sm font-medium text-foreground/72 transition hover:bg-primary-soft hover:text-foreground"
                     activeProps={{
                       className:
                         "rounded-full px-3 py-2 text-sm font-semibold text-foreground bg-primary-soft shadow-sm",
