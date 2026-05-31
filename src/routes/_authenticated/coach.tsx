@@ -63,6 +63,11 @@ type StudentRow = {
   course_title: string;
 };
 
+type MonthlyAttendanceCounts = {
+  present: number;
+  absent: number;
+};
+
 function CoachDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -75,6 +80,17 @@ function CoachDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [students, setStudents] = useState<number>(0);
   const [startingClassId, setStartingClassId] = useState<string | null>(null);
+  const [endingClassId, setEndingClassId] = useState<string | null>(null);
+  const [attendanceMonth, setAttendanceMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [monthlyTotalsByCourse, setMonthlyTotalsByCourse] = useState<Record<string, number>>({});
+  const [monthlyAttendanceByStudentCourse, setMonthlyAttendanceByStudentCourse] = useState<
+    Record<string, MonthlyAttendanceCounts>
+  >({});
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [monthlyError, setMonthlyError] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState({
     title: "",
     course_id: "",
@@ -147,6 +163,70 @@ function CoachDashboard() {
     })();
   }, [selectedClassId, user]);
 
+  useEffect(() => {
+    if (!user) return;
+    if (!attendanceMonth) return;
+
+    const monthStart = new Date(`${attendanceMonth}-01T00:00:00`);
+    if (Number.isNaN(monthStart.getTime())) return;
+    const monthEnd = new Date(monthStart);
+    monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+    const monthClasses = classes.filter((cls) => {
+      const startsAt = new Date(cls.scheduled_at).getTime();
+      return startsAt >= monthStart.getTime() && startsAt < monthEnd.getTime() && startsAt <= Date.now();
+    });
+
+    const totals: Record<string, number> = {};
+    monthClasses.forEach((cls) => {
+      if (!cls.course_id) return;
+      totals[cls.course_id] = (totals[cls.course_id] ?? 0) + 1;
+    });
+    setMonthlyTotalsByCourse(totals);
+
+    const classIds = monthClasses.map((cls) => cls.id);
+    if (classIds.length === 0) {
+      setMonthlyAttendanceByStudentCourse({});
+      setMonthlyError(null);
+      return;
+    }
+
+    const classToCourse = new Map(monthClasses.map((cls) => [cls.id, cls.course_id] as const));
+    setMonthlyLoading(true);
+    setMonthlyError(null);
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("class_id, student_id, present")
+        .in("class_id", classIds);
+
+      if (error) {
+        setMonthlyError(error.message);
+        setMonthlyAttendanceByStudentCourse({});
+        return;
+      }
+
+      const records = (data || []) as { class_id: string; student_id: string; present: boolean }[];
+      const counts: Record<string, MonthlyAttendanceCounts> = {};
+      records.forEach((row) => {
+        const courseId = classToCourse.get(row.class_id);
+        if (!courseId) return;
+        const key = `${row.student_id}:${courseId}`;
+        const current = counts[key] ?? { present: 0, absent: 0 };
+        if (row.present) current.present += 1;
+        else current.absent += 1;
+        counts[key] = current;
+      });
+      setMonthlyAttendanceByStudentCourse(counts);
+    })()
+      .catch((e: unknown) => {
+        setMonthlyError(e instanceof Error ? e.message : "Failed to load monthly attendance");
+        setMonthlyAttendanceByStudentCourse({});
+      })
+      .finally(() => setMonthlyLoading(false));
+  }, [attendanceMonth, classes, user]);
+
   const selectedClass = useMemo(
     () => classes.find((cls) => cls.id === selectedClassId) || null,
     [classes, selectedClassId],
@@ -187,6 +267,10 @@ function CoachDashboard() {
   }
 
   async function enterRoom(cls: LiveClass) {
+    if (cls.status === "ended") {
+      toast.error("This class has ended");
+      return;
+    }
     setStartingClassId(cls.id);
     try {
       if (cls.status !== "live") {
@@ -200,6 +284,32 @@ function CoachDashboard() {
       navigate({ to: "/live-room" });
     } finally {
       setStartingClassId(null);
+    }
+  }
+
+  async function endClassNow(cls: LiveClass) {
+    if (cls.status === "ended") return;
+
+    const confirmed = window.confirm(
+      `End "${cls.title}" now? Students will no longer be able to join.`,
+    );
+    if (!confirmed) return;
+
+    setEndingClassId(cls.id);
+    try {
+      const { error } = await supabase
+        .from("live_classes")
+        .update({ status: "ended" })
+        .eq("id", cls.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Class ended");
+      await reload();
+    } finally {
+      setEndingClassId(null);
     }
   }
 
@@ -345,15 +455,23 @@ function CoachDashboard() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setSelectedClassId(c.id)}>
-                  Manage attendance
+                  Attendance
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={endingClassId === c.id || c.status === "ended"}
+                  onClick={() => void endClassNow(c)}
+                >
+                  {endingClassId === c.id ? "Ending…" : "End class"}
                 </Button>
                 <Button
                   size="sm"
-                  disabled={startingClassId === c.id}
+                  disabled={startingClassId === c.id || c.status === "ended"}
                   onClick={() => void enterRoom(c)}
                   className="font-bold"
                 >
-                  {startingClassId === c.id ? "Starting…" : "Enter room"}
+                  {c.status === "ended" ? "Ended" : startingClassId === c.id ? "Starting…" : "Enter room"}
                 </Button>
               </div>
             </div>
@@ -442,6 +560,63 @@ function CoachDashboard() {
             <p className="text-muted-foreground">No students assigned to this class yet.</p>
           )}
         </div>
+      </Card>
+
+      <Card className="glass-strong rounded-2xl p-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-2xl">Monthly attendance</h2>
+          <div className="flex items-center gap-3">
+            <Label className="text-sm text-muted-foreground">Month</Label>
+            <Input
+              type="month"
+              value={attendanceMonth}
+              onChange={(event) => setAttendanceMonth(event.target.value)}
+              className="w-40"
+            />
+          </div>
+        </div>
+
+        {monthlyError && <p className="text-sm text-destructive mt-3">{monthlyError}</p>}
+        {monthlyLoading && <p className="text-sm text-muted-foreground mt-3">Loading…</p>}
+
+        <div className="overflow-x-auto mt-4">
+          <table className="w-full text-sm">
+            <thead className="text-left text-muted-foreground">
+              <tr>
+                <th className="py-2">Student</th>
+                <th>Course</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>Unmarked</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roster.map((student) => {
+                const total = monthlyTotalsByCourse[student.course_id] ?? 0;
+                const key = `${student.student_id}:${student.course_id}`;
+                const counts = monthlyAttendanceByStudentCourse[key] ?? { present: 0, absent: 0 };
+                const marked = counts.present + counts.absent;
+                const unmarked = Math.max(0, total - marked);
+
+                return (
+                  <tr key={`month-${student.student_id}-${student.course_id}`} className="border-t border-border">
+                    <td className="py-3 font-semibold">{student.name}</td>
+                    <td>{student.course_title}</td>
+                    <td>{counts.present}</td>
+                    <td>{counts.absent}</td>
+                    <td>{unmarked}</td>
+                    <td>{total}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {roster.length === 0 && (
+          <p className="text-muted-foreground mt-3">No students assigned.</p>
+        )}
       </Card>
 
       <Card className="glass-strong rounded-2xl p-5">
