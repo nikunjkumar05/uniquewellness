@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { upsertClassAttendance } from "@/lib/attendance.functions";
+import { clearClassAttendance, upsertClassAttendance } from "@/lib/attendance.functions";
 
 export const Route = createFileRoute("/_authenticated/coach")({
   head: () => ({ meta: [{ title: "Coach Dashboard — UWI" }] }),
@@ -72,11 +72,12 @@ function CoachDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const upsertAttendance = useServerFn(upsertClassAttendance);
+  const clearAttendance = useServerFn(clearClassAttendance);
   const [classes, setClasses] = useState<LiveClass[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [attendanceByClass, setAttendanceByClass] = useState<Record<string, boolean>>({});
+  const [attendanceByClass, setAttendanceByClass] = useState<Record<string, boolean | undefined>>({});
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [students, setStudents] = useState<number>(0);
   const [startingClassId, setStartingClassId] = useState<string | null>(null);
@@ -91,6 +92,7 @@ function CoachDashboard() {
   >({});
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [monthlyError, setMonthlyError] = useState<string | null>(null);
+  const [showAllClasses, setShowAllClasses] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     title: "",
     course_id: "",
@@ -151,15 +153,7 @@ function CoachDashboard() {
   useEffect(() => {
     if (!user || !selectedClassId) return;
     (async () => {
-      const { data: attendance } = await supabase
-        .from("attendance")
-        .select("id, class_id, student_id, present, marked_at")
-        .eq("class_id", selectedClassId);
-      const map: Record<string, boolean> = {};
-      (attendance || []).forEach((row) => {
-        map[row.student_id] = row.present;
-      });
-      setAttendanceByClass(map);
+      await loadAttendance(selectedClassId);
     })();
   }, [selectedClassId, user]);
 
@@ -251,7 +245,7 @@ function CoachDashboard() {
       });
   }, [courses, enrollments, profiles, selectedClass]);
 
-  const presentCount = roster.filter((student) => attendanceByClass[student.student_id]).length;
+  const presentCount = roster.filter((student) => attendanceByClass[student.student_id] === true).length;
 
   async function reload() {
     if (!user) return;
@@ -335,8 +329,23 @@ function CoachDashboard() {
     await reload();
   }
 
+  async function loadAttendance(classId: string) {
+    const { data: attendance } = await supabase
+      .from("attendance")
+      .select("id, class_id, student_id, present, marked_at")
+      .eq("class_id", classId);
+
+    const map: Record<string, boolean | undefined> = {};
+    (attendance || []).forEach((row) => {
+      map[row.student_id] = row.present;
+    });
+    setAttendanceByClass(map);
+  }
+
   async function markAttendance(studentId: string, present: boolean) {
     if (!selectedClassId) return;
+    setAttendanceByClass((current) => ({ ...current, [studentId]: present }));
+
     const { error } = await supabase.from("attendance").upsert(
       {
         class_id: selectedClassId,
@@ -347,15 +356,41 @@ function CoachDashboard() {
     );
 
     if (!error) {
-      setAttendanceByClass((current) => ({ ...current, [studentId]: present }));
       return;
     }
 
     try {
       await upsertAttendance({ data: { classId: selectedClassId, studentId, present } });
-      setAttendanceByClass((current) => ({ ...current, [studentId]: present }));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : error.message);
+      await loadAttendance(selectedClassId);
+    }
+  }
+
+  async function unmarkAttendance(studentId: string) {
+    if (!selectedClassId) return;
+
+    setAttendanceByClass((current) => {
+      const next = { ...current };
+      delete next[studentId];
+      return next;
+    });
+
+    const { error } = await supabase
+      .from("attendance")
+      .delete()
+      .eq("class_id", selectedClassId)
+      .eq("student_id", studentId);
+
+    if (!error) {
+      return;
+    }
+
+    try {
+      await clearAttendance({ data: { classId: selectedClassId, studentId } });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : error.message);
+      await loadAttendance(selectedClassId);
     }
   }
 
@@ -439,7 +474,7 @@ function CoachDashboard() {
       <Card className="glass-strong rounded-2xl p-5">
         <h2 className="text-2xl mb-4">My classes</h2>
         <div className="space-y-2">
-          {classes.map((c) => (
+          {(showAllClasses ? classes : classes.slice(0, 5)).map((c) => (
             <div
               key={c.id}
               className={`glass rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3 ${selectedClassId === c.id ? "ring-2 ring-primary" : ""}`}
@@ -476,6 +511,19 @@ function CoachDashboard() {
               </div>
             </div>
           ))}
+
+          {classes.length > 5 && (
+            <div className="pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAllClasses((current) => !current)}
+                className="font-bold"
+              >
+                {showAllClasses ? "Show less" : `Show more (${classes.length - 5})`}
+              </Button>
+            </div>
+          )}
           {classes.length === 0 && (
             <p className="text-muted-foreground">No classes scheduled yet.</p>
           )}
@@ -523,7 +571,7 @@ function CoachDashboard() {
         <div className="space-y-2 mt-4">
           {roster.length ? (
             roster.map((student) => {
-              const present = Boolean(attendanceByClass[student.student_id]);
+              const status = attendanceByClass[student.student_id];
               return (
                 <div
                   key={`${selectedClassId}-${student.student_id}`}
@@ -538,17 +586,22 @@ function CoachDashboard() {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant={present ? "default" : "outline"}
+                      variant={status === undefined ? "secondary" : "outline"}
+                      onClick={() => void unmarkAttendance(student.student_id)}
+                    >
+                      Unmarked
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={status === true ? "default" : "outline"}
                       onClick={() => void markAttendance(student.student_id, true)}
-                      className="font-bold"
                     >
                       Present
                     </Button>
                     <Button
                       size="sm"
-                      variant={!present ? "default" : "outline"}
+                      variant={status === false ? "destructive" : "outline"}
                       onClick={() => void markAttendance(student.student_id, false)}
-                      className="font-bold"
                     >
                       Absent
                     </Button>
