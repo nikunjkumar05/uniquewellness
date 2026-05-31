@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { upsertClassAttendance } from "@/lib/attendance.functions";
 
 export const Route = createFileRoute("/_authenticated/coach")({
   head: () => ({ meta: [{ title: "Coach Dashboard — UWI" }] }),
@@ -63,6 +65,8 @@ type StudentRow = {
 
 function CoachDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const upsertAttendance = useServerFn(upsertClassAttendance);
   const [classes, setClasses] = useState<LiveClass[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -70,6 +74,7 @@ function CoachDashboard() {
   const [attendanceByClass, setAttendanceByClass] = useState<Record<string, boolean>>({});
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [students, setStudents] = useState<number>(0);
+  const [startingClassId, setStartingClassId] = useState<string | null>(null);
   const [scheduleForm, setScheduleForm] = useState({
     title: "",
     course_id: "",
@@ -181,6 +186,23 @@ function CoachDashboard() {
     }
   }
 
+  async function enterRoom(cls: LiveClass) {
+    setStartingClassId(cls.id);
+    try {
+      if (cls.status !== "live") {
+        const { error } = await supabase.from("live_classes").update({ status: "live" }).eq("id", cls.id);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        await reload();
+      }
+      navigate({ to: "/live-room" });
+    } finally {
+      setStartingClassId(null);
+    }
+  }
+
   async function scheduleClass() {
     if (!scheduleForm.title.trim()) return toast.error("Title is required");
     if (!scheduleForm.course_id) return toast.error("Pick a course");
@@ -213,11 +235,18 @@ function CoachDashboard() {
       },
       { onConflict: "class_id,student_id" },
     );
-    if (error) {
-      toast.error(error.message);
+
+    if (!error) {
+      setAttendanceByClass((current) => ({ ...current, [studentId]: present }));
       return;
     }
-    setAttendanceByClass((current) => ({ ...current, [studentId]: present }));
+
+    try {
+      await upsertAttendance({ data: { classId: selectedClassId, studentId, present } });
+      setAttendanceByClass((current) => ({ ...current, [studentId]: present }));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : error.message);
+    }
   }
 
   return (
@@ -318,12 +347,14 @@ function CoachDashboard() {
                 <Button variant="outline" size="sm" onClick={() => setSelectedClassId(c.id)}>
                   Manage attendance
                 </Button>
-                <Link
-                  to="/live-room"
-                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+                <Button
+                  size="sm"
+                  disabled={startingClassId === c.id}
+                  onClick={() => void enterRoom(c)}
+                  className="font-bold"
                 >
-                  Enter room
-                </Link>
+                  {startingClassId === c.id ? "Starting…" : "Enter room"}
+                </Button>
               </div>
             </div>
           ))}
