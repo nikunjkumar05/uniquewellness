@@ -146,7 +146,7 @@ export function Navbar() {
                     Sign In
                   </Link>
                   <Link
-                    to="/contact"
+                    to="/book-demo"
                     className="inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition hover:-translate-y-0.5"
                   >
                     Book Demo
@@ -221,7 +221,7 @@ export function Navbar() {
                   Sign In
                 </Link>
                 <Link
-                  to="/contact"
+                  to="/book-demo"
                   onClick={() => setOpen(false)}
                   className="rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground"
                 >

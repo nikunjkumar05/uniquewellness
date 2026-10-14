@@ -260,7 +260,7 @@ export type Database = {
           email: string;
           full_name: string | null;
           id: string;
-          new_password_hash: string;
+          new_password_hash: string | null;
           status: string;
           updated_at: string;
         };
@@ -270,7 +270,7 @@ export type Database = {
           email: string;
           full_name?: string | null;
           id?: string;
-          new_password_hash: string;
+          new_password_hash: string | null;
           status?: string;
           updated_at?: string;
         };

@@ -5,8 +5,17 @@ UPDATE public.demo_bookings
 SET source = 'demo'
 WHERE source IS NULL;
 
-ALTER PUBLICATION supabase_realtime
-  ADD TABLE IF NOT EXISTS public.demo_bookings;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'demo_bookings'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.demo_bookings;
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.generate_invoice_for_paid_fee()
 RETURNS trigger

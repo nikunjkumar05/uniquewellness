@@ -3,13 +3,30 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import {
+  BookOpen,
+  CalendarClock,
+  ClipboardCheck,
+  LayoutDashboard,
+  Plus,
+  Users,
+  Video,
+} from "lucide-react";
 import { clearClassAttendance, upsertClassAttendance } from "@/lib/attendance.functions";
+import {
+  ConfirmAction,
+  EmptyState,
+  PageHeader,
+  SectionCard,
+  StatCard,
+  StatusBadge,
+} from "@/components/dashboard/ui";
 
 export const Route = createFileRoute("/_authenticated/coach")({
   head: () => ({ meta: [{ title: "Coach Dashboard — UWI" }] }),
@@ -45,28 +62,24 @@ type Enrollment = {
   course_id: string;
 };
 
-type AttendanceRecord = {
-  id: string;
-  class_id: string;
-  student_id: string;
-  present: boolean;
-  marked_at: string;
+type MonthlyAttendanceCounts = {
+  present: number;
+  absent: number;
 };
 
 type StudentRow = {
   student_id: string;
   name: string;
   phone: string;
-  username: string;
   email: string;
   course_id: string;
   course_title: string;
 };
 
-type MonthlyAttendanceCounts = {
-  present: number;
-  absent: number;
-};
+const TAB_TRIGGER_CLASS =
+  "flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm";
+const TAB_LIST_CLASS =
+  "flex h-auto w-fit flex-wrap gap-1 rounded-2xl border border-white/60 bg-white/70 p-1.5 shadow-sm backdrop-blur";
 
 function CoachDashboard() {
   const { user } = useAuth();
@@ -81,7 +94,6 @@ function CoachDashboard() {
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [students, setStudents] = useState<number>(0);
   const [startingClassId, setStartingClassId] = useState<string | null>(null);
-  const [endingClassId, setEndingClassId] = useState<string | null>(null);
   const [attendanceMonth, setAttendanceMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -140,7 +152,6 @@ function CoachDashboard() {
         setProfiles([]);
         setStudents(0);
       }
-
     })();
   }, [user]);
 
@@ -237,7 +248,6 @@ function CoachDashboard() {
           student_id: enrollment.student_id,
           name: profile?.full_name || profile?.email || enrollment.student_id.slice(0, 8),
           phone: profile?.phone || "—",
-          username: profile?.username || "—",
           email: profile?.email || "—",
           course_id: enrollment.course_id,
           course_title: course?.title || "—",
@@ -246,6 +256,13 @@ function CoachDashboard() {
   }, [courses, enrollments, profiles, selectedClass]);
 
   const presentCount = roster.filter((student) => attendanceByClass[student.student_id] === true).length;
+  const upcoming = useMemo(
+    () =>
+      classes
+        .filter((c) => new Date(c.scheduled_at) > new Date() && c.status !== "ended")
+        .sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at)),
+    [classes],
+  );
 
   async function reload() {
     if (!user) return;
@@ -283,28 +300,13 @@ function CoachDashboard() {
 
   async function endClassNow(cls: LiveClass) {
     if (cls.status === "ended") return;
-
-    const confirmed = window.confirm(
-      `End "${cls.title}" now? Students will no longer be able to join.`,
-    );
-    if (!confirmed) return;
-
-    setEndingClassId(cls.id);
-    try {
-      const { error } = await supabase
-        .from("live_classes")
-        .update({ status: "ended" })
-        .eq("id", cls.id);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      toast.success("Class ended");
-      await reload();
-    } finally {
-      setEndingClassId(null);
+    const { error } = await supabase.from("live_classes").update({ status: "ended" }).eq("id", cls.id);
+    if (error) {
+      toast.error(error.message);
+      return;
     }
+    toast.success("Class ended");
+    await reload();
   }
 
   async function scheduleClass() {
@@ -394,295 +396,354 @@ function CoachDashboard() {
     }
   }
 
+  function classCard(c: LiveClass, compact = false) {
+    return (
+      <div
+        key={c.id}
+        className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-background/60 p-4 ${selectedClassId === c.id ? "border-primary ring-1 ring-primary" : "border-border"}`}
+      >
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{c.title}</span>
+            <StatusBadge status={c.status} />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {new Date(c.scheduled_at).toLocaleString()} · {c.duration_min} min
+          </div>
+          {!compact && (
+            <div className="text-xs text-muted-foreground">
+              Course: {courses.find((cc) => cc.id === c.course_id)?.title || "—"}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {!compact && (
+            <Button variant="outline" size="sm" onClick={() => setSelectedClassId(c.id)}>
+              Attendance
+            </Button>
+          )}
+          <ConfirmAction
+            title={`End "${c.title}"?`}
+            description="Students will no longer be able to join this class."
+            confirmLabel="End class"
+            onConfirm={() => endClassNow(c)}
+          >
+            <Button variant="destructive" size="sm" disabled={c.status === "ended"}>
+              End class
+            </Button>
+          </ConfirmAction>
+          <Button
+            size="sm"
+            disabled={startingClassId === c.id || c.status === "ended"}
+            onClick={() => void enterRoom(c)}
+            className="font-bold"
+          >
+            {c.status === "ended" ? "Ended" : startingClassId === c.id ? "Starting…" : "Enter room"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl sm:text-5xl section-title">Coach Dashboard</h1>
-        <p className="text-muted-foreground">Schedule classes, track students, and mark attendance.</p>
-      </div>
+      <PageHeader
+        title="Coach Dashboard"
+        subtitle="Schedule classes, run live rooms, and track attendance."
+      />
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="text-xs uppercase text-muted-foreground">Courses</div>
-          <div className="text-3xl font-display">{courses.length}</div>
-        </div>
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="text-xs uppercase text-muted-foreground">Students</div>
-          <div className="text-3xl font-display">{students}</div>
-        </div>
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="text-xs uppercase text-muted-foreground">Classes</div>
-          <div className="text-3xl font-display">{classes.length}</div>
-        </div>
+        <StatCard label="Courses" value={courses.length} icon={<BookOpen size={18} />} />
+        <StatCard label="Students" value={students} icon={<Users size={18} />} />
+        <StatCard label="Upcoming" value={upcoming.length} icon={<CalendarClock size={18} />} />
       </div>
 
-      <Card className="glass-strong rounded-2xl p-5 space-y-4">
-        <h2 className="text-2xl">Schedule a class</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <Label>Class title</Label>
-            <Input
-              value={scheduleForm.title}
-              onChange={(event) => setScheduleForm({ ...scheduleForm, title: event.target.value })}
-              placeholder="e.g. Tactical patterns"
-            />
-          </div>
-          <div>
-            <Label>Course</Label>
-            <Select
-              value={scheduleForm.course_id}
-              onValueChange={(value) => setScheduleForm({ ...scheduleForm, course_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select your course" />
-              </SelectTrigger>
-              <SelectContent>
-                {courses.map((course) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Date & time</Label>
-            <Input
-              type="datetime-local"
-              value={scheduleForm.scheduled_at}
-              onChange={(event) =>
-                setScheduleForm({ ...scheduleForm, scheduled_at: event.target.value })
-              }
-            />
-          </div>
-          <div>
-            <Label>Duration (minutes)</Label>
-            <Input
-              type="number"
-              value={scheduleForm.duration_min}
-              onChange={(event) =>
-                setScheduleForm({ ...scheduleForm, duration_min: Number(event.target.value) })
-              }
-            />
-          </div>
-        </div>
-        <Button onClick={scheduleClass} className="font-bold">
-          Schedule class
-        </Button>
-      </Card>
+      <Tabs defaultValue="overview">
+        <TabsList className={TAB_LIST_CLASS}>
+          <TabsTrigger value="overview" className={TAB_TRIGGER_CLASS}>
+            <LayoutDashboard size={15} /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="classes" className={TAB_TRIGGER_CLASS}>
+            <Video size={15} /> Classes
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className={TAB_TRIGGER_CLASS}>
+            <ClipboardCheck size={15} /> Attendance
+          </TabsTrigger>
+          <TabsTrigger value="students" className={TAB_TRIGGER_CLASS}>
+            <Users size={15} /> Students
+          </TabsTrigger>
+        </TabsList>
 
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">My classes</h2>
-        <div className="space-y-2">
-          {(showAllClasses ? classes : classes.slice(0, 5)).map((c) => (
-            <div
-              key={c.id}
-              className={`glass rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3 ${selectedClassId === c.id ? "ring-2 ring-primary" : ""}`}
-            >
-              <div>
-                <div className="font-semibold">{c.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(c.scheduled_at).toLocaleString()} · {c.duration_min} min
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Course: {courses.find((cc) => cc.id === c.course_id)?.title || "—"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => setSelectedClassId(c.id)}>
-                  Attendance
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={endingClassId === c.id || c.status === "ended"}
-                  onClick={() => void endClassNow(c)}
-                >
-                  {endingClassId === c.id ? "Ending…" : "End class"}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={startingClassId === c.id || c.status === "ended"}
-                  onClick={() => void enterRoom(c)}
-                  className="font-bold"
-                >
-                  {c.status === "ended" ? "Ended" : startingClassId === c.id ? "Starting…" : "Enter room"}
-                </Button>
-              </div>
-            </div>
-          ))}
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          <SectionCard
+            title="Up next"
+            subtitle={upcoming.length ? `${upcoming.length} upcoming class${upcoming.length === 1 ? "" : "es"}` : undefined}
+          >
+            {upcoming.length === 0 ? (
+              <EmptyState
+                title="Nothing scheduled"
+                hint="Schedule your next class from the Classes tab."
+                icon={<Video size={20} />}
+              />
+            ) : (
+              <div className="space-y-2">{upcoming.slice(0, 3).map((c) => classCard(c, true))}</div>
+            )}
+          </SectionCard>
 
-          {classes.length > 5 && (
-            <div className="pt-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowAllClasses((current) => !current)}
-                className="font-bold"
-              >
-                {showAllClasses ? "Show less" : `Show more (${classes.length - 5})`}
-              </Button>
-            </div>
-          )}
-          {classes.length === 0 && (
-            <p className="text-muted-foreground">No classes scheduled yet.</p>
-          )}
-        </div>
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-2xl">Student roster</h2>
-          <div className="text-sm text-muted-foreground">
-            {roster.length} students · {presentCount} marked present
-          </div>
-        </div>
-        <div className="overflow-x-auto mt-4">
-          <table className="w-full text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr>
-                <th className="py-2">Student</th>
-                <th>Phone</th>
-                <th>Username</th>
-                <th>Course</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roster.map((student) => (
-                <tr key={`${student.student_id}-${student.course_id}`} className="border-t border-border">
-                  <td className="py-3 font-semibold">{student.name}</td>
-                  <td>{student.phone}</td>
-                  <td>{student.username}</td>
-                  <td>{student.course_title}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-2xl">Attendance</h2>
-          <div className="text-sm text-muted-foreground">
-            {selectedClass?.title || "Pick a class"}
-          </div>
-        </div>
-        <div className="space-y-2 mt-4">
-          {roster.length ? (
-            roster.map((student) => {
-              const status = attendanceByClass[student.student_id];
-              return (
-                <div
-                  key={`${selectedClassId}-${student.student_id}`}
-                  className="glass rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3"
-                >
-                  <div>
-                    <div className="font-semibold">{student.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {student.phone} · {student.username}
+          <SectionCard title="My courses">
+            {courses.length === 0 ? (
+              <EmptyState title="No courses assigned" hint="Ask an admin to assign you a course." />
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {courses.map((c) => {
+                  const count = enrollments.filter((e) => e.course_id === c.id).length;
+                  return (
+                    <div key={c.id} className="rounded-2xl border border-border bg-background/60 p-4">
+                      <div className="font-semibold">{c.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {count} student{count === 1 ? "" : "s"} enrolled
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={status === undefined ? "secondary" : "outline"}
-                      onClick={() => void unmarkAttendance(student.student_id)}
-                    >
-                      Unmarked
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={status === true ? "default" : "outline"}
-                      onClick={() => void markAttendance(student.student_id, true)}
-                    >
-                      Present
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={status === false ? "destructive" : "outline"}
-                      onClick={() => void markAttendance(student.student_id, false)}
-                    >
-                      Absent
-                    </Button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-muted-foreground">No students assigned to this class yet.</p>
-          )}
-        </div>
-      </Card>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </TabsContent>
 
-      <Card className="glass-strong rounded-2xl p-5">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-2xl">Monthly attendance</h2>
-          <div className="flex items-center gap-3">
-            <Label className="text-sm text-muted-foreground">Month</Label>
-            <Input
-              type="month"
-              value={attendanceMonth}
-              onChange={(event) => setAttendanceMonth(event.target.value)}
-              className="w-40"
-            />
-          </div>
-        </div>
-
-        {monthlyError && <p className="text-sm text-destructive mt-3">{monthlyError}</p>}
-        {monthlyLoading && <p className="text-sm text-muted-foreground mt-3">Loading…</p>}
-
-        <div className="overflow-x-auto mt-4">
-          <table className="w-full text-sm">
-            <thead className="text-left text-muted-foreground">
-              <tr>
-                <th className="py-2">Student</th>
-                <th>Course</th>
-                <th>Present</th>
-                <th>Absent</th>
-                <th>Unmarked</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roster.map((student) => {
-                const total = monthlyTotalsByCourse[student.course_id] ?? 0;
-                const key = `${student.student_id}:${student.course_id}`;
-                const counts = monthlyAttendanceByStudentCourse[key] ?? { present: 0, absent: 0 };
-                const marked = counts.present + counts.absent;
-                const unmarked = Math.max(0, total - marked);
-
-                return (
-                  <tr key={`month-${student.student_id}-${student.course_id}`} className="border-t border-border">
-                    <td className="py-3 font-semibold">{student.name}</td>
-                    <td>{student.course_title}</td>
-                    <td>{counts.present}</td>
-                    <td>{counts.absent}</td>
-                    <td>{unmarked}</td>
-                    <td>{total}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {roster.length === 0 && (
-          <p className="text-muted-foreground mt-3">No students assigned.</p>
-        )}
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">My courses</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          {courses.map((c) => (
-            <div key={c.id} className="glass rounded-2xl p-4 font-semibold">
-              {c.title}
+        <TabsContent value="classes" className="mt-4 space-y-4">
+          <SectionCard title="Schedule a class">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>Class title</Label>
+                <Input
+                  value={scheduleForm.title}
+                  onChange={(event) => setScheduleForm({ ...scheduleForm, title: event.target.value })}
+                  placeholder="e.g. Tactical patterns"
+                />
+              </div>
+              <div>
+                <Label>Course</Label>
+                <Select
+                  value={scheduleForm.course_id}
+                  onValueChange={(value) => setScheduleForm({ ...scheduleForm, course_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((course) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Date & time</Label>
+                <Input
+                  type="datetime-local"
+                  value={scheduleForm.scheduled_at}
+                  onChange={(event) =>
+                    setScheduleForm({ ...scheduleForm, scheduled_at: event.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Duration (minutes)</Label>
+                <Input
+                  type="number"
+                  value={scheduleForm.duration_min}
+                  onChange={(event) =>
+                    setScheduleForm({ ...scheduleForm, duration_min: Number(event.target.value) })
+                  }
+                />
+              </div>
             </div>
-          ))}
-          {courses.length === 0 && <p className="text-muted-foreground">No courses assigned.</p>}
-        </div>
-      </Card>
+            <Button onClick={scheduleClass} className="mt-4 font-bold">
+              <Plus size={15} className="mr-1" /> Schedule class
+            </Button>
+          </SectionCard>
+
+          <SectionCard title={`All classes (${classes.length})`}>
+            {classes.length === 0 ? (
+              <EmptyState title="No classes yet" hint="Your scheduled classes appear here." icon={<Video size={20} />} />
+            ) : (
+              <div className="space-y-2">
+                {(showAllClasses ? classes : classes.slice(0, 5)).map((c) => classCard(c))}
+                {classes.length > 5 && (
+                  <div className="pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowAllClasses((current) => !current)}
+                      className="font-bold"
+                    >
+                      {showAllClasses ? "Show less" : `Show more (${classes.length - 5})`}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-4">
+          <SectionCard
+            title="Mark attendance"
+            subtitle={selectedClass ? `${selectedClass.title} · ${roster.length} students · ${presentCount} present` : "Pick a class to begin"}
+            actions={
+              classes.length > 0 ? (
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : undefined
+            }
+          >
+            {roster.length ? (
+              <div className="space-y-2">
+                {roster.map((student) => {
+                  const status = attendanceByClass[student.student_id];
+                  return (
+                    <div
+                      key={`${selectedClassId}-${student.student_id}`}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 p-4"
+                    >
+                      <div>
+                        <div className="font-semibold">{student.name}</div>
+                        <div className="text-xs text-muted-foreground">{student.phone}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={status === undefined ? "secondary" : "outline"}
+                          onClick={() => void unmarkAttendance(student.student_id)}
+                        >
+                          Unmarked
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={status === true ? "default" : "outline"}
+                          onClick={() => void markAttendance(student.student_id, true)}
+                        >
+                          Present
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={status === false ? "destructive" : "outline"}
+                          onClick={() => void markAttendance(student.student_id, false)}
+                        >
+                          Absent
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState title="No students for this class" hint="Students appear once enrolled in the class course." />
+            )}
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="students" className="mt-4 space-y-4">
+          <SectionCard
+            title={`Student roster (${roster.length})`}
+            subtitle="Everyone enrolled in your courses."
+          >
+            {roster.length === 0 ? (
+              <EmptyState title="No students yet" hint="Enrolled students appear here." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-muted-foreground">
+                    <tr>
+                      <th className="py-2">Student</th>
+                      <th>Phone</th>
+                      <th>Course</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roster.map((student) => (
+                      <tr key={`${student.student_id}-${student.course_id}`} className="border-t border-border">
+                        <td className="py-3 font-semibold">{student.name}</td>
+                        <td>{student.phone}</td>
+                        <td>{student.course_title}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="Monthly attendance"
+            actions={
+              <div className="flex items-center gap-3">
+                <Label className="text-sm text-muted-foreground">Month</Label>
+                <Input
+                  type="month"
+                  value={attendanceMonth}
+                  onChange={(event) => setAttendanceMonth(event.target.value)}
+                  className="w-40"
+                />
+              </div>
+            }
+          >
+            {monthlyError && <p className="mt-3 text-sm text-destructive">{monthlyError}</p>}
+            {monthlyLoading && <p className="mt-3 text-sm text-muted-foreground">Loading…</p>}
+            {roster.length === 0 ? (
+              <EmptyState title="No students assigned" hint="Monthly totals appear once students enroll." />
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-muted-foreground">
+                    <tr>
+                      <th className="py-2">Student</th>
+                      <th>Course</th>
+                      <th>Present</th>
+                      <th>Absent</th>
+                      <th>Unmarked</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roster.map((student) => {
+                      const total = monthlyTotalsByCourse[student.course_id] ?? 0;
+                      const key = `${student.student_id}:${student.course_id}`;
+                      const counts = monthlyAttendanceByStudentCourse[key] ?? { present: 0, absent: 0 };
+                      const marked = counts.present + counts.absent;
+                      const unmarked = Math.max(0, total - marked);
+
+                      return (
+                        <tr key={`month-${student.student_id}-${student.course_id}`} className="border-t border-border">
+                          <td className="py-3 font-semibold">{student.name}</td>
+                          <td>{student.course_title}</td>
+                          <td>{counts.present}</td>
+                          <td>{counts.absent}</td>
+                          <td>{unmarked}</td>
+                          <td>{total}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

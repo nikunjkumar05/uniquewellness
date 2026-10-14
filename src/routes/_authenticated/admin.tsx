@@ -1,13 +1,13 @@
-import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { createStudentAccount } from "@/lib/admin.functions";
+import { resolvePasswordRequest } from "@/lib/password-request.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +25,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, Pencil, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  CalendarClock,
+  Check,
+  Clock,
+  Download,
+  Globe,
+  Inbox,
+  KeyRound,
+  LayoutDashboard,
+  Pencil,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
+  Video,
+  Wallet,
+  X,
+} from "lucide-react";
 import { buildInvoiceNumber, downloadInvoicePdf } from "@/lib/invoice-pdf";
+import {
+  ConfirmAction,
+  EmptyState,
+  PageHeader,
+  SectionCard,
+  StatCard,
+  StatusBadge,
+} from "@/components/dashboard/ui";
+import { StatsAdmin, StoriesAdmin, TestimonialsAdmin } from "@/components/dashboard/website-panels";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin Dashboard — UWI" }] }),
@@ -109,21 +136,34 @@ type PasswordRequest = {
   email: string;
   full_name: string | null;
   consent: boolean;
-  new_password_hash: string;
   status: string;
   created_at: string;
 };
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="glass-premium rounded-2xl p-5 hover-lift">
-      <div className="text-xs uppercase text-muted-foreground tracking-wider font-bold">
-        {label}
-      </div>
-      <div className="text-4xl stat-value mt-1 text-foreground">{value}</div>
-    </div>
-  );
-}
+type TabValue = "overview" | "people" | "academics" | "billing" | "enquiries" | "website";
+
+const TABS: { value: TabValue; label: string; icon: React.ReactNode }[] = [
+  { value: "overview", label: "Overview", icon: <LayoutDashboard size={15} /> },
+  { value: "people", label: "People", icon: <Users size={15} /> },
+  { value: "academics", label: "Academics", icon: <BookOpen size={15} /> },
+  { value: "billing", label: "Billing", icon: <Wallet size={15} /> },
+  { value: "enquiries", label: "Enquiries", icon: <Inbox size={15} /> },
+  { value: "website", label: "Website", icon: <Globe size={15} /> },
+];
+
+/** Map pre-redesign tab params to the consolidated tabs (old bookmarks keep working). */
+const LEGACY_TABS: Record<string, TabValue> = {
+  users: "people",
+  students: "people",
+  "password-requests": "people",
+  courses: "academics",
+  classes: "academics",
+  enrollments: "academics",
+  fees: "billing",
+  demos: "enquiries",
+};
+
+const TAB_VALUES = new Set<string>(TABS.map((t) => t.value));
 
 function AdminDashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -151,9 +191,11 @@ function AdminDashboard() {
         .select("id, fee_id, student_id, invoice_number, amount, issued_at, pdf_url")
         .order("issued_at", { ascending: false }),
     ]);
-    
-    // fetch password reset requests
-    const pr = await supabase.from("password_reset_requests").select("*").order("created_at", { ascending: false });
+
+    const pr = await supabase
+      .from("password_reset_requests")
+      .select("id, email, full_name, consent, status, created_at")
+      .order("created_at", { ascending: false });
     if (p.data) setProfiles(p.data as Profile[]);
     if (r.data) setRoles(r.data as { user_id: string; role: string }[]);
     if (c.data) setCourses(c.data as Course[]);
@@ -191,22 +233,19 @@ function AdminDashboard() {
   const studentCount = roles.filter((r) => r.role === "student").length;
   const coachCount = roles.filter((r) => r.role === "coach").length;
   const unpaidCount = fees.filter((f) => f.status === "unpaid").length;
+  const pendingEnquiries = demos.filter((d) => d.status === "pending").length;
 
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
-  const allowedTabs = new Set([
-    "users",
-    "students",
-    "courses",
-    "classes",
-    "enrollments",
-    "fees",
-    "demos",
-    "password-requests",
-  ]);
-  const tabParam = params.get("tab");
-  const activeTab = tabParam && allowedTabs.has(tabParam) ? tabParam : "users";
+  const rawTab = params.get("tab") ?? "";
+  const activeTab: TabValue = TAB_VALUES.has(rawTab)
+    ? (rawTab as TabValue)
+    : (LEGACY_TABS[rawTab] ?? "overview");
+
+  function go(tab: TabValue) {
+    navigate({ to: "/admin", search: { tab } });
+  }
 
   return (
     <div className="space-y-6">
@@ -216,16 +255,16 @@ function AdminDashboard() {
           if (!open) setContactAlert(null);
         }}
       >
-        <DialogContent className="glass-premium max-w-lg text-center">
+        <DialogContent className="max-w-lg text-center">
           <DialogHeader>
-            <DialogTitle className="text-2xl">New Contact Us submission</DialogTitle>
+            <DialogTitle className="font-display text-2xl">New contact submission</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Someone just filled the Contact Us form from {contactAlert?.name} / {contactAlert?.email}. Tap to view.
+              {contactAlert?.name} ({contactAlert?.email}) just reached out via the Contact page.
             </p>
             {contactAlert && (
-              <div className="rounded-2xl border border-border bg-background/60 p-4 text-left text-sm space-y-2">
+              <div className="space-y-2 rounded-2xl border border-border bg-background/60 p-4 text-left text-sm">
                 <div>
                   <span className="font-bold">Phone:</span> {contactAlert.phone}
                 </div>
@@ -244,58 +283,75 @@ function AdminDashboard() {
             <Button
               onClick={() => {
                 setContactAlert(null);
-                navigate({ to: "/admin", search: { tab: "demos" } });
+                go("enquiries");
               }}
               className="font-bold"
             >
-              View in dashboard
+              View in Enquiries
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div>
-        <h1 className="text-4xl sm:text-5xl section-title">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Run the academy end-to-end.</p>
+      <PageHeader title="Admin Dashboard" subtitle="Run the academy end-to-end." />
+
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard label="Students" value={studentCount} icon={<Users size={18} />} />
+        <StatCard label="Coaches" value={coachCount} icon={<UserPlus size={18} />} />
+        <StatCard label="Courses" value={courses.length} icon={<BookOpen size={18} />} />
+        <StatCard
+          label="Pending enquiries"
+          value={pendingEnquiries}
+          hint={`${unpaidCount} unpaid fee${unpaidCount === 1 ? "" : "s"}`}
+          icon={<Inbox size={18} />}
+        />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Students" value={studentCount} />
-        <StatCard label="Coaches" value={coachCount} />
-        <StatCard label="Courses" value={courses.length} />
-        <StatCard label="Unpaid fees" value={unpaidCount} />
-      </div>
+      <Tabs value={activeTab} onValueChange={(tab) => go(tab as TabValue)}>
+        <TabsList className="flex h-auto flex-wrap justify-start gap-1 rounded-2xl border border-white/60 bg-white/70 p-1.5 shadow-sm backdrop-blur">
+          {TABS.map((t) => (
+            <TabsTrigger
+              key={t.value}
+              value={t.value}
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              {t.icon}
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      <Tabs value={activeTab} onValueChange={(tab) => navigate({ to: "/admin", search: { tab } })}>
-
-        <TabsContent value="users">
-          <UsersPanel profiles={profiles} roles={roles} onChange={reload} />
+        <TabsContent value="overview" className="mt-4">
+          <OverviewPanel
+            courses={courses}
+            enrollments={enrollments}
+            classes={classes}
+            demos={demos}
+            fees={fees}
+            profiles={profiles}
+            go={go}
+          />
         </TabsContent>
-        <TabsContent value="students">
-          <QuickAddStudent courses={courses} onChange={reload} />
+        <TabsContent value="people" className="mt-4">
+          <PeoplePanel
+            profiles={profiles}
+            roles={roles}
+            courses={courses}
+            passwordRequests={passwordRequests}
+            onChange={reload}
+          />
         </TabsContent>
-        <TabsContent value="courses">
-          <CoursesPanel courses={courses} profiles={profiles} roles={roles} onChange={reload} />
-        </TabsContent>
-        <TabsContent value="classes">
-          <ClassesPanel
+        <TabsContent value="academics" className="mt-4">
+          <AcademicsPanel
             classes={classes}
             courses={courses}
             profiles={profiles}
             roles={roles}
-            onChange={reload}
-          />
-        </TabsContent>
-        <TabsContent value="enrollments">
-          <EnrollmentsPanel
             enrollments={enrollments}
-            courses={courses}
-            profiles={profiles}
-            roles={roles}
             onChange={reload}
           />
         </TabsContent>
-        <TabsContent value="fees">
+        <TabsContent value="billing" className="mt-4">
           <FeesPanel
             fees={fees}
             invoices={invoices}
@@ -304,62 +360,183 @@ function AdminDashboard() {
             onChange={reload}
           />
         </TabsContent>
-        <TabsContent value="demos">
-          <DemoPanel demos={demos} onChange={reload} />
+        <TabsContent value="enquiries" className="mt-4">
+          <EnquiriesPanel demos={demos} onChange={reload} />
         </TabsContent>
-        <TabsContent value="password-requests">
-          <Card className="glass-premium rounded-2xl p-5 mt-4">
-            <h2 className="text-2xl mb-4 card-title">Password reset requests</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-muted-foreground">
-                  <tr>
-                    <th className="py-2">Requested At</th>
-                    <th>Email</th>
-                    <th>Name</th>
-                    <th>Consent</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {passwordRequests.map((r) => (
-                    <tr key={r.id} className="border-t border-border">
-                      <td className="py-3">{new Date(r.created_at).toLocaleString()}</td>
-                      <td>{r.email}</td>
-                      <td>{r.full_name || "—"}</td>
-                      <td>{r.consent ? "Yes" : "No"}</td>
-                      <td>{r.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        <TabsContent value="website" className="mt-4">
+          <WebsitePanel />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-const EMPTY_COURSE_FORM = {
-  title: "",
-  description: "",
-  category: "chess",
-  price: 0,
-  coach_id: "",
-  thumbnail_url: "",
-  seats: 30,
-  schedule: "",
-  is_active: true,
-};
+/* ═══════════════ Overview ═══════════════ */
+function OverviewPanel({
+  courses,
+  enrollments,
+  classes,
+  demos,
+  fees,
+  profiles,
+  go,
+}: {
+  courses: Course[];
+  enrollments: Enrollment[];
+  classes: LiveClass[];
+  demos: DemoBooking[];
+  fees: Fee[];
+  profiles: Profile[];
+  go: (tab: TabValue) => void;
+}) {
+  const now = new Date();
+  const upcoming = classes
+    .filter((c) => new Date(c.scheduled_at) > now && c.status !== "ended")
+    .sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at))
+    .slice(0, 5);
+  const recentDemos = demos.slice(0, 5);
+  const recentEnrollments = enrollments.slice(-5).reverse();
+  const collected = fees
+    .filter((f) => f.status === "paid")
+    .reduce((sum, f) => sum + Number(f.amount), 0);
+  const due = fees
+    .filter((f) => f.status !== "paid")
+    .reduce((sum, f) => sum + Number(f.amount), 0);
+  const nameOf = (id: string) =>
+    profiles.find((p) => p.user_id === id)?.full_name ||
+    profiles.find((p) => p.user_id === id)?.email ||
+    `${id.slice(0, 8)}…`;
 
-function UsersPanel({
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard label="Enrollments" value={enrollments.length} icon={<UserPlus size={18} />} />
+        <StatCard label="Upcoming classes" value={upcoming.length} icon={<CalendarClock size={18} />} />
+        <StatCard label="Fees collected (₹)" value={collected.toLocaleString("en-IN")} icon={<Wallet size={18} />} />
+        <StatCard label="Fees due (₹)" value={due.toLocaleString("en-IN")} icon={<Wallet size={18} />} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionCard
+          title="Upcoming classes"
+          actions={
+            <Button size="sm" variant="outline" onClick={() => go("academics")}>
+              Manage
+            </Button>
+          }
+        >
+          {upcoming.length === 0 ? (
+            <EmptyState title="Nothing scheduled" hint="Schedule the next live class from Academics." />
+          ) : (
+            <div className="space-y-2">
+              {upcoming.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background/60 p-3"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">{c.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(c.scheduled_at).toLocaleString()} · {c.duration_min} min ·{" "}
+                      {courses.find((cc) => cc.id === c.course_id)?.title || "General"}
+                    </div>
+                  </div>
+                  <StatusBadge status={c.status} />
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Latest enquiries"
+          actions={
+            <Button size="sm" variant="outline" onClick={() => go("enquiries")}>
+              Review all
+            </Button>
+          }
+        >
+          {recentDemos.length === 0 ? (
+            <EmptyState title="No enquiries yet" hint="Demo and contact submissions land here in real time." />
+          ) : (
+            <div className="space-y-2">
+              {recentDemos.map((d) => (
+                <div
+                  key={d.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-background/60 p-3"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">
+                      {d.name}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        · {(d.source ?? "demo") === "contact" ? "Contact" : d.preferred_subject || d.course}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {d.email} · {d.phone}
+                    </div>
+                  </div>
+                  <StatusBadge status={d.status} />
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      <SectionCard
+        title="Recent enrollments"
+        actions={
+          <Button size="sm" variant="outline" onClick={() => go("people")}>
+            Manage people
+          </Button>
+        }
+      >
+        {recentEnrollments.length === 0 ? (
+          <EmptyState title="No enrollments yet" hint="Enroll students into courses from Academics." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="py-2">Student</th>
+                  <th>Course</th>
+                  <th>Fee</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentEnrollments.map((e) => (
+                  <tr key={e.id} className="border-t border-border">
+                    <td className="py-2 font-semibold">{nameOf(e.student_id)}</td>
+                    <td>{courses.find((c) => c.id === e.course_id)?.title || "—"}</td>
+                    <td>₹{e.fee_amount}</td>
+                    <td>
+                      <StatusBadge status={e.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+/* ═══════════════ People (users + add student + password resets) ═══════════════ */
+function PeoplePanel({
   profiles,
   roles,
+  courses,
+  passwordRequests,
   onChange,
 }: {
   profiles: Profile[];
   roles: { user_id: string; role: string }[];
+  courses: Course[];
+  passwordRequests: PasswordRequest[];
   onChange: () => void;
 }) {
   async function setRole(userId: string, role: "admin" | "coach" | "student") {
@@ -371,54 +548,67 @@ function UsersPanel({
       onChange();
     }
   }
+
   return (
-    <Card className="glass-premium rounded-2xl p-5 mt-4">
-      <h2 className="text-2xl mb-4 card-title">All users</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-2">Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profiles.map((p) => {
-              const role = roles.find((r) => r.user_id === p.user_id)?.role || "student";
-              return (
-                <tr key={p.user_id} className="border-t border-border">
-                  <td className="py-3 font-semibold">{p.full_name || "—"}</td>
-                  <td>{p.email}</td>
-                  <td>{p.phone || "—"}</td>
-                  <td>
-                    <Select
-                      value={role}
-                      onValueChange={(v) => setRole(p.user_id, v as "admin" | "coach" | "student")}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="coach">Coach</SelectItem>
-                        <SelectItem value="student">Student</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </td>
+    <div className="space-y-4">
+      <SectionCard
+        title={`Everyone (${profiles.length})`}
+        subtitle="Change roles to promote students to coaches or fellow admins."
+        actions={<AddStudentDialog courses={courses} onChange={onChange} />}
+      >
+        {profiles.length === 0 ? (
+          <EmptyState title="No users yet" hint="New sign-ups appear here automatically." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="py-2">Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Role</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+              </thead>
+              <tbody>
+                {profiles.map((p) => {
+                  const role = roles.find((r) => r.user_id === p.user_id)?.role || "student";
+                  return (
+                    <tr key={p.user_id} className="border-t border-border">
+                      <td className="py-3 font-semibold">{p.full_name || "—"}</td>
+                      <td>{p.email}</td>
+                      <td>{p.phone || "—"}</td>
+                      <td>
+                        <Select
+                          value={role}
+                          onValueChange={(v) => setRole(p.user_id, v as "admin" | "coach" | "student")}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="coach">Coach</SelectItem>
+                            <SelectItem value="student">Student</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+
+      <PasswordRequestsPanel requests={passwordRequests} onChange={onChange} />
+    </div>
   );
 }
 
-function QuickAddStudent({ courses, onChange }: { courses: Course[]; onChange: () => void }) {
+function AddStudentDialog({ courses, onChange }: { courses: Course[]; onChange: () => void }) {
   const create = useServerFn(createStudentAccount);
+  const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -445,14 +635,8 @@ function QuickAddStudent({ courses, onChange }: { courses: Course[]; onChange: (
         },
       });
       toast.success("Student account created");
-      setForm({
-        email: "",
-        password: "",
-        full_name: "",
-        username: "",
-        course_id: "",
-        fee_amount: 0,
-      });
+      setForm({ email: "", password: "", full_name: "", username: "", course_id: "", fee_amount: 0 });
+      setOpen(false);
       onChange();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -462,74 +646,278 @@ function QuickAddStudent({ courses, onChange }: { courses: Course[]; onChange: (
   }
 
   return (
-    <Card className="glass-premium rounded-2xl p-6 mt-4 max-w-2xl space-y-4">
-      <h2 className="text-2xl card-title">Quick-add student</h2>
-      <p className="text-sm text-muted-foreground">
-        Creates an instantly-active account. Student can log in and customize profile later.
-      </p>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div>
-          <Label>Full name *</Label>
-          <Input
-            value={form.full_name}
-            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-          />
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="font-bold">
+          <UserPlus size={15} className="mr-1" /> Add student
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-2xl">New student account</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Creates an instantly-active account, optionally enrolled into a course.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Full name *</Label>
+            <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+          </div>
+          <div>
+            <Label>Username</Label>
+            <Input
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              placeholder="optional"
+            />
+          </div>
+          <div>
+            <Label>Email *</Label>
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>Password *</Label>
+            <Input
+              type="text"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="min 8 chars"
+            />
+          </div>
+          <div>
+            <Label>Course</Label>
+            <Select value={form.course_id} onValueChange={(v) => setForm({ ...form, course_id: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Optional course" />
+              </SelectTrigger>
+              <SelectContent>
+                {courses.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Fee (₹)</Label>
+            <Input
+              type="number"
+              value={form.fee_amount}
+              onChange={(e) => setForm({ ...form, fee_amount: Number(e.target.value) })}
+            />
+          </div>
         </div>
-        <div>
-          <Label>Username</Label>
-          <Input
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder="optional"
-          />
-        </div>
-        <div>
-          <Label>Email *</Label>
-          <Input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label>Password *</Label>
-          <Input
-            type="text"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="min 8 chars"
-          />
-        </div>
-        <div>
-          <Label>Course</Label>
-          <Select value={form.course_id} onValueChange={(v) => setForm({ ...form, course_id: v })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Optional course" />
-            </SelectTrigger>
-            <SelectContent>
-              {courses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Fee (₹)</Label>
-          <Input
-            type="number"
-            value={form.fee_amount}
-            onChange={(e) => setForm({ ...form, fee_amount: Number(e.target.value) })}
-          />
-        </div>
-      </div>
-      <Button onClick={submit} disabled={busy} className="font-bold">
-        {busy ? "Creating…" : "Create student account"}
-      </Button>
-    </Card>
+        <DialogFooter>
+          <Button onClick={submit} disabled={busy} className="font-bold">
+            {busy ? "Creating…" : "Create student account"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
+
+function PasswordRequestsPanel({
+  requests,
+  onChange,
+}: {
+  requests: PasswordRequest[];
+  onChange: () => void;
+}) {
+  const resolve = useServerFn(resolvePasswordRequest);
+  const [approving, setApproving] = useState<PasswordRequest | null>(null);
+  const [tempPassword, setTempPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const pending = requests.filter((r) => r.status === "pending");
+  const history = requests.filter((r) => r.status !== "pending");
+
+  async function reject(id: string) {
+    setBusy(true);
+    try {
+      await resolve({ data: { id, action: "rejected" } });
+      toast.success("Request rejected");
+      onChange();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approve() {
+    if (!approving) return;
+    if (tempPassword.length < 8) return toast.error("Temporary password needs 8+ characters");
+    setBusy(true);
+    try {
+      await resolve({ data: { id: approving.id, action: "approved", tempPassword } });
+      toast.success(`Password reset for ${approving.email}`);
+      setApproving(null);
+      setTempPassword("");
+      onChange();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SectionCard
+      title="Password reset requests"
+      subtitle="Approve with a temporary password — the user changes it in Profile settings afterwards."
+    >
+      <Dialog open={Boolean(approving)} onOpenChange={(v) => !v && setApproving(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Approve reset</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Set a temporary password for <span className="font-semibold">{approving?.email}</span>.
+            Share it with them securely.
+          </p>
+          <div>
+            <Label>Temporary password (min 8 chars)</Label>
+            <Input
+              type="text"
+              value={tempPassword}
+              onChange={(e) => setTempPassword(e.target.value)}
+              placeholder="e.g. UWI-2026-reset"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={approve} disabled={busy} className="font-bold">
+              {busy ? "Setting…" : "Set password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {pending.length === 0 ? (
+        <EmptyState
+          title="No pending requests"
+          hint="Forgot-password requests from the login page land here."
+          icon={<KeyRound size={20} />}
+        />
+      ) : (
+        <div className="space-y-2">
+          {pending.map((r) => (
+            <div
+              key={r.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 p-4"
+            >
+              <div className="min-w-0">
+                <div className="font-semibold">{r.email}</div>
+                <div className="text-xs text-muted-foreground">
+                  {r.full_name || "—"} · requested {new Date(r.created_at).toLocaleString()}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => setApproving(r)} className="font-bold">
+                  <Check size={14} className="mr-1" /> Approve
+                </Button>
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => reject(r.id)}>
+                  <X size={14} className="mr-1" /> Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            History
+          </h3>
+          <div className="space-y-2">
+            {history.slice(0, 8).map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-background/40 p-3 text-sm"
+              >
+                <span className="font-medium">{r.email}</span>
+                <StatusBadge status={r.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+/* ═══════════════ Academics (courses · classes · enrollments) ═══════════════ */
+function AcademicsPanel({
+  classes,
+  courses,
+  profiles,
+  roles,
+  enrollments,
+  onChange,
+}: {
+  classes: LiveClass[];
+  courses: Course[];
+  profiles: Profile[];
+  roles: { user_id: string; role: string }[];
+  enrollments: Enrollment[];
+  onChange: () => void;
+}) {
+  return (
+    <Tabs defaultValue="courses">
+      <TabsList className="flex h-auto w-fit flex-wrap gap-1 rounded-2xl border border-white/60 bg-white/70 p-1.5 shadow-sm backdrop-blur">
+        <TabsTrigger value="courses" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Courses ({courses.length})
+        </TabsTrigger>
+        <TabsTrigger value="classes" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Live classes ({classes.length})
+        </TabsTrigger>
+        <TabsTrigger value="enrollments" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Enrollments ({enrollments.length})
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="courses" className="mt-4">
+        <CoursesPanel courses={courses} profiles={profiles} roles={roles} onChange={onChange} />
+      </TabsContent>
+      <TabsContent value="classes" className="mt-4">
+        <ClassesPanel
+          classes={classes}
+          courses={courses}
+          profiles={profiles}
+          roles={roles}
+          onChange={onChange}
+        />
+      </TabsContent>
+      <TabsContent value="enrollments" className="mt-4">
+        <EnrollmentsPanel
+          enrollments={enrollments}
+          courses={courses}
+          profiles={profiles}
+          roles={roles}
+          onChange={onChange}
+        />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+const EMPTY_COURSE_FORM = {
+  title: "",
+  description: "",
+  category: "chess",
+  price: 0,
+  coach_id: "",
+  thumbnail_url: "",
+  seats: 30,
+  schedule: "",
+  is_active: true,
+};
 
 function CourseFormDialog({
   open,
@@ -609,9 +997,9 @@ function CourseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-premium max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{course ? "Edit course" : "New course"}</DialogTitle>
+          <DialogTitle className="font-display text-2xl">{course ? "Edit course" : "New course"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -629,7 +1017,7 @@ function CourseFormDialog({
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <Label>Category</Label>
               <Select
@@ -693,7 +1081,7 @@ function CourseFormDialog({
                 <img
                   src={form.thumbnail_url}
                   alt="thumb"
-                  className="h-16 w-24 object-cover rounded-xl"
+                  className="h-16 w-24 rounded-xl object-cover"
                 />
               )}
               <input
@@ -740,7 +1128,6 @@ function CoursesPanel({
   const [editing, setEditing] = useState<Course | null>(null);
 
   async function remove(id: string) {
-    if (!confirm("Delete this course? Enrollments may be affected.")) return;
     const { error } = await supabase.from("courses").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
@@ -750,9 +1137,9 @@ function CoursesPanel({
   }
 
   return (
-    <Card className="glass-premium rounded-2xl p-5 mt-4">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h2 className="text-2xl card-title">Courses</h2>
+    <SectionCard
+      title={`Courses (${courses.length})`}
+      actions={
         <Button
           className="font-bold"
           onClick={() => {
@@ -760,9 +1147,10 @@ function CoursesPanel({
             setOpen(true);
           }}
         >
-          Add course
+          <Plus size={15} className="mr-1" /> Add course
         </Button>
-      </div>
+      }
+    >
       <CourseFormDialog
         open={open}
         onOpenChange={setOpen}
@@ -771,47 +1159,57 @@ function CoursesPanel({
         roles={roles}
         onSaved={onChange}
       />
-      <div className="grid md:grid-cols-2 gap-3">
-        {courses.map((c) => (
-          <div key={c.id} className="glass rounded-2xl overflow-hidden hover-lift">
-            {c.thumbnail_url && (
-              <img src={c.thumbnail_url} alt={c.title} className="w-full h-32 object-cover" />
-            )}
-            <div className="p-4 flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-lg card-title truncate">{c.title}</div>
-                <div className="text-xs text-muted-foreground uppercase font-bold">
-                  {c.category} · ₹{c.price} · {c.seats} seats {!c.is_active && "· INACTIVE"}
+      {courses.length === 0 ? (
+        <EmptyState title="No courses yet" hint="Create the first course to start enrolling students." />
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {courses.map((c) => (
+            <div key={c.id} className="overflow-hidden rounded-2xl border border-border bg-background/60">
+              {c.thumbnail_url && (
+                <img src={c.thumbnail_url} alt={c.title} className="h-32 w-full object-cover" />
+              )}
+              <div className="flex items-start justify-between gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate text-lg font-bold">{c.title}</span>
+                    <StatusBadge status={c.is_active ? "active" : "inactive"} />
+                  </div>
+                  <div className="text-xs font-bold uppercase text-muted-foreground">
+                    {c.category} · ₹{c.price} · {c.seats} seats
+                  </div>
+                  {c.schedule && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock size={12} /> {c.schedule}
+                    </div>
+                  )}
+                  {c.description && <p className="mt-2 line-clamp-2 text-sm">{c.description}</p>}
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Coach: {profiles.find((p) => p.user_id === c.coach_id)?.full_name || "Unassigned"}
+                  </div>
                 </div>
-                {c.schedule && (
-                  <div className="text-xs text-muted-foreground mt-1">⏱ {c.schedule}</div>
-                )}
-                {c.description && <p className="text-sm mt-2 line-clamp-2">{c.description}</p>}
-                <div className="text-xs text-muted-foreground mt-2">
-                  Coach: {profiles.find((p) => p.user_id === c.coach_id)?.full_name || "Unassigned"}
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditing(c);
+                      setOpen(true);
+                    }}
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                  <ConfirmAction
+                    title="Delete course?"
+                    description={`"${c.title}" and its schedule will be removed. Enrollments may be affected.`}
+                    onConfirm={() => remove(c.id)}
+                  />
                 </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditing(c);
-                    setOpen(true);
-                  }}
-                >
-                  <Pencil size={14} />
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => remove(c.id)}>
-                  <Trash2 size={14} />
-                </Button>
               </div>
             </div>
-          </div>
-        ))}
-        {courses.length === 0 && <p className="text-muted-foreground">No courses yet.</p>}
-      </div>
-    </Card>
+          ))}
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
@@ -860,7 +1258,6 @@ function ClassesPanel({
     setForm({ title: "", course_id: "", coach_id: "", scheduled_at: "", duration_min: 60 });
   }
   async function remove(id: string) {
-    if (!confirm("Delete this class?")) return;
     const { error } = await supabase.from("live_classes").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
@@ -870,16 +1267,18 @@ function ClassesPanel({
   }
 
   return (
-    <Card className="glass-premium rounded-2xl p-5 mt-4">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h2 className="text-2xl card-title">Live Classes</h2>
+    <SectionCard
+      title={`Live classes (${classes.length})`}
+      actions={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="font-bold">Schedule class</Button>
+            <Button className="font-bold">
+              <Plus size={15} className="mr-1" /> Schedule class
+            </Button>
           </DialogTrigger>
-          <DialogContent className="glass-premium">
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>New live class</DialogTitle>
+              <DialogTitle className="font-display text-2xl">New live class</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div>
@@ -925,7 +1324,7 @@ function ClassesPanel({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Schedule *</Label>
                   <Input
@@ -951,42 +1350,57 @@ function ClassesPanel({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-      <div className="space-y-2">
-        {classes.map((cls) => (
-          <div
-            key={cls.id}
-            className="glass rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="font-bold">{cls.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {new Date(cls.scheduled_at).toLocaleString()} · {cls.duration_min} min
+      }
+    >
+      {classes.length === 0 ? (
+        <EmptyState
+          title="No classes scheduled"
+          hint="Schedule the first live class for a course and coach."
+          icon={<Video size={20} />}
+        />
+      ) : (
+        <div className="space-y-2">
+          {classes.map((cls) => (
+            <div
+              key={cls.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 p-4"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold">{cls.title}</span>
+                  <StatusBadge status={cls.status} />
+                  {cls.enablex_room_id ? (
+                    <StatusBadge status="ready" />
+                  ) : (
+                    <StatusBadge status="pending" />
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(cls.scheduled_at).toLocaleString()} · {cls.duration_min} min
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Course: {courses.find((c) => c.id === cls.course_id)?.title || "—"} · Coach:{" "}
+                  {profiles.find((p) => p.user_id === cls.coach_id)?.full_name || "—"}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Course: {courses.find((c) => c.id === cls.course_id)?.title || "—"} · Coach:{" "}
-                {profiles.find((p) => p.user_id === cls.coach_id)?.full_name || "—"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Room: {cls.enablex_room_id ? "✅ ready" : "⏳ not created"}
+              <div className="flex gap-2">
+                <Link
+                  to="/live-room"
+                  className="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+                >
+                  Open
+                </Link>
+                <ConfirmAction
+                  title="Delete class?"
+                  description={`"${cls.title}" will be permanently removed.`}
+                  onConfirm={() => remove(cls.id)}
+                />
               </div>
             </div>
-            <div className="flex gap-2">
-              <Link
-                to="/live-room"
-                className="inline-flex items-center px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover-lift"
-              >
-                Open
-              </Link>
-              <Button size="sm" variant="outline" onClick={() => remove(cls.id)}>
-                <Trash2 size={14} />
-              </Button>
-            </div>
-          </div>
-        ))}
-        {classes.length === 0 && <p className="text-muted-foreground">No classes scheduled.</p>}
-      </div>
-    </Card>
+          ))}
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
@@ -1030,9 +1444,8 @@ function EnrollmentsPanel({
   }
 
   return (
-    <Card className="glass-premium rounded-2xl p-5 mt-4 space-y-4">
-      <h2 className="text-2xl card-title">Enrollments</h2>
-      <div className="grid md:grid-cols-4 gap-3">
+    <SectionCard title={`Enrollments (${enrollments.length})`}>
+      <div className="mb-4 grid gap-3 md:grid-cols-4">
         <Select value={form.student_id} onValueChange={(v) => setForm({ ...form, student_id: v })}>
           <SelectTrigger>
             <SelectValue placeholder="Student" />
@@ -1067,41 +1480,50 @@ function EnrollmentsPanel({
           Enroll
         </Button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-2">Student</th>
-              <th>Course</th>
-              <th>Fee</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {enrollments.map((e) => (
-              <tr key={e.id} className="border-t border-border">
-                <td className="py-2 font-semibold">
-                  {profiles.find((p) => p.user_id === e.student_id)?.full_name ||
-                    e.student_id.slice(0, 8)}
-                </td>
-                <td>{courses.find((c) => c.id === e.course_id)?.title || "—"}</td>
-                <td>₹{e.fee_amount}</td>
-                <td>{e.status}</td>
-                <td>
-                  <Button size="sm" variant="outline" onClick={() => remove(e.id)}>
-                    <Trash2 size={14} />
-                  </Button>
-                </td>
+      {enrollments.length === 0 ? (
+        <EmptyState title="No enrollments yet" hint="Enroll a student into a course above." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-muted-foreground">
+              <tr>
+                <th className="py-2">Student</th>
+                <th>Course</th>
+                <th>Fee</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+            </thead>
+            <tbody>
+              {enrollments.map((e) => (
+                <tr key={e.id} className="border-t border-border">
+                  <td className="py-2 font-semibold">
+                    {profiles.find((p) => p.user_id === e.student_id)?.full_name ||
+                      e.student_id.slice(0, 8)}
+                  </td>
+                  <td>{courses.find((c) => c.id === e.course_id)?.title || "—"}</td>
+                  <td>₹{e.fee_amount}</td>
+                  <td>
+                    <StatusBadge status={e.status} />
+                  </td>
+                  <td className="text-right">
+                    <ConfirmAction
+                      title="Remove enrollment?"
+                      description="The student loses access to this course's classes."
+                      onConfirm={() => remove(e.id)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
+/* ═══════════════ Billing ═══════════════ */
 function FeesPanel({
   fees,
   invoices,
@@ -1179,8 +1601,7 @@ function FeesPanel({
 
     const course = courses.find((c) => c.id === f.course_id);
     await downloadInvoicePdf({
-      invoiceNumber:
-        invoice?.invoice_number ?? buildInvoiceNumber(f.id, f.period),
+      invoiceNumber: invoice?.invoice_number ?? buildInvoiceNumber(f.id, f.period),
       issuedAt: invoice?.issued_at ?? f.paid_at ?? new Date().toISOString(),
       studentName: student.full_name || student.email || "Student",
       studentEmail: student.email || "",
@@ -1210,7 +1631,6 @@ function FeesPanel({
     }
   }
   async function remove(id: string) {
-    if (!confirm("Delete this fee record?")) return;
     const { error } = await supabase.from("fees").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
@@ -1245,10 +1665,11 @@ function FeesPanel({
   }
 
   return (
-    <Card className="glass-premium rounded-2xl p-5 mt-4 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-2xl card-title">Fees</h2>
-        <div className="flex gap-2 flex-wrap">
+    <SectionCard
+      title={`Fees (${fees.length})`}
+      subtitle="Click a status badge to toggle paid / unpaid. Paid fees generate invoices automatically."
+      actions={
+        <>
           <Input
             type="month"
             value={form.period}
@@ -1261,9 +1682,10 @@ function FeesPanel({
           <Button variant="outline" onClick={exportCsv}>
             Export CSV
           </Button>
-        </div>
-      </div>
-      <div className="grid md:grid-cols-4 gap-3">
+        </>
+      }
+    >
+      <div className="mb-4 grid gap-3 md:grid-cols-4">
         <Select value={form.student_id} onValueChange={(v) => setForm({ ...form, student_id: v })}>
           <SelectTrigger>
             <SelectValue placeholder="Student" />
@@ -1298,60 +1720,64 @@ function FeesPanel({
           Add fee
         </Button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-2">Student</th>
-              <th>Course</th>
-              <th>Period</th>
-              <th>Amount</th>
-              <th>Status</th>
-                <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fees.map((f) => (
-              <tr key={f.id} className="border-t border-border">
-                <td className="py-2 font-semibold">
-                  {profiles.find((p) => p.user_id === f.student_id)?.full_name || "—"}
-                </td>
-                <td>{courses.find((c) => c.id === f.course_id)?.title || "—"}</td>
-                <td>{f.period}</td>
-                <td>₹{f.amount}</td>
-                <td>
-                  <button
-                    onClick={() => toggleStatus(f)}
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${f.status === "paid" ? "bg-primary text-primary-foreground" : "bg-destructive/10 text-destructive"}`}
-                  >
-                    {f.status}
-                  </button>
-                </td>
-                <td>
-                  <div className="flex items-center gap-2 justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void downloadInvoice(f)}
-                      disabled={!invoices.find((item) => item.fee_id === f.id) && f.status !== "paid"}
-                    >
-                      <Download size={14} className="mr-2" /> PDF
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => remove(f.id)}>
-                      <Trash2 size={14} />
-                    </Button>
-                  </div>
-                </td>
+      {fees.length === 0 ? (
+        <EmptyState title="No fee records" hint="Add a fee manually or bulk-apply a month." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-muted-foreground">
+              <tr>
+                <th className="py-2">Student</th>
+                <th>Course</th>
+                <th>Period</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+            </thead>
+            <tbody>
+              {fees.map((f) => (
+                <tr key={f.id} className="border-t border-border">
+                  <td className="py-2 font-semibold">
+                    {profiles.find((p) => p.user_id === f.student_id)?.full_name || "—"}
+                  </td>
+                  <td>{courses.find((c) => c.id === f.course_id)?.title || "—"}</td>
+                  <td>{f.period}</td>
+                  <td>₹{f.amount}</td>
+                  <td>
+                    <button onClick={() => toggleStatus(f)} title="Toggle paid / unpaid">
+                      <StatusBadge status={f.status} />
+                    </button>
+                  </td>
+                  <td>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void downloadInvoice(f)}
+                        disabled={!invoices.find((item) => item.fee_id === f.id) && f.status !== "paid"}
+                      >
+                        <Download size={14} className="mr-2" /> PDF
+                      </Button>
+                      <ConfirmAction
+                        title="Delete fee record?"
+                        description={`₹${f.amount} for ${f.period} will be removed.`}
+                        onConfirm={() => remove(f.id)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
-function DemoPanel({ demos, onChange }: { demos: DemoBooking[]; onChange: () => void }) {
+/* ═══════════════ Enquiries (demo bookings · contact messages) ═══════════════ */
+function EnquiriesPanel({ demos, onChange }: { demos: DemoBooking[]; onChange: () => void }) {
   const contactBookings = demos.filter((d) => (d.source ?? "demo") === "contact");
   const demoBookings = demos.filter((d) => (d.source ?? "demo") !== "contact");
 
@@ -1364,7 +1790,6 @@ function DemoPanel({ demos, onChange }: { demos: DemoBooking[]; onChange: () => 
     }
   }
   async function remove(id: string) {
-    if (!confirm("Delete this booking?")) return;
     const { error } = await supabase.from("demo_bookings").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
@@ -1372,99 +1797,108 @@ function DemoPanel({ demos, onChange }: { demos: DemoBooking[]; onChange: () => 
       onChange();
     }
   }
-  return (
-    <Card className="glass-premium rounded-2xl p-5 mt-4">
-      <h2 className="text-2xl mb-4 card-title">Demo bookings & contact submissions</h2>
 
-      <div className="mb-6 rounded-2xl border border-border bg-background/60 p-4">
-        <h3 className="text-lg font-bold">Contact submissions</h3>
-        <div className="mt-3 space-y-2">
-          {contactBookings.map((d) => (
-            <div
-              key={d.id}
-              className="glass rounded-2xl p-4 flex items-start justify-between flex-wrap gap-3"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="font-bold">
-                  {d.name}
-                  <span className="ml-2 text-[10px] uppercase tracking-widest rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                    Contact
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {d.email} · {d.phone}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Course interest: {d.course}
-                </div>
-                {d.message && <p className="text-sm mt-1">{d.message}</p>}
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <span
-                  className={`px-3 py-1 text-xs rounded-full font-bold ${d.status === "approved" ? "bg-primary text-primary-foreground" : d.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
-                >
-                  {d.status}
-                </span>
-                <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "approved")}>Approve</Button>
-                <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "rejected")}>Reject</Button>
-                <Button size="sm" variant="outline" onClick={() => remove(d.id)}>
-                  <Trash2 size={14} />
-                </Button>
-              </div>
+  function enquiryRow(d: DemoBooking, isContact: boolean) {
+    return (
+      <div
+        key={d.id}
+        className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border bg-background/60 p-4"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 font-bold">
+            {d.name}
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+              {isContact ? "Contact" : d.preferred_subject || d.course}
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {d.email} · {d.phone}
+          </div>
+          {!isContact && d.parent_name && (
+            <div className="text-xs text-muted-foreground">Parent: {d.parent_name}</div>
+          )}
+          {!isContact && (d.student_class || d.preferred_timing) && (
+            <div className="text-xs text-muted-foreground">
+              {d.student_class && <>Class: {d.student_class} · </>}
+              {d.preferred_timing && <>Timing: {d.preferred_timing}</>}
             </div>
-          ))}
-          {contactBookings.length === 0 && <p className="text-muted-foreground">No contact submissions yet.</p>}
+          )}
+          {d.message && <p className="mt-1 text-sm">{d.message}</p>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={d.status} />
+          <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "approved")}>
+            <Check size={14} className="mr-1" /> Approve
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "rejected")}>
+            <X size={14} className="mr-1" /> Reject
+          </Button>
+          <ConfirmAction
+            title="Delete enquiry?"
+            description={`The submission from ${d.name} will be permanently removed.`}
+            onConfirm={() => remove(d.id)}
+          />
         </div>
       </div>
+    );
+  }
 
-      <h3 className="text-lg font-bold mb-3">Demo bookings</h3>
-      <div className="space-y-2">
-        {demoBookings.map((d) => (
-          <div
-            key={d.id}
-            className="glass rounded-2xl p-4 flex items-start justify-between flex-wrap gap-3"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="font-bold">
-                {d.name}{" "}
-                <span className="text-xs text-muted-foreground font-normal">
-                  · {d.preferred_subject || d.course}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {d.email} · {d.phone}
-              </div>
-              {d.parent_name && (
-                <div className="text-xs text-muted-foreground">Parent: {d.parent_name}</div>
-              )}
-              {(d.student_class || d.preferred_timing) && (
-                <div className="text-xs text-muted-foreground">
-                  {d.student_class && <>Class: {d.student_class} · </>}
-                  {d.preferred_timing && <>Timing: {d.preferred_timing}</>}
-                </div>
-              )}
-              {d.message && <p className="text-sm mt-1">{d.message}</p>}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <span
-                className={`px-3 py-1 text-xs rounded-full font-bold ${d.status === "approved" ? "bg-primary text-primary-foreground" : d.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
-              >
-                {d.status}
-              </span>
-              <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "approved")}>
-                Approve
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setStatus(d.id, "rejected")}>
-                Reject
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => remove(d.id)}>
-                <Trash2 size={14} />
-              </Button>
-            </div>
-          </div>
-        ))}
-        {demos.length === 0 && <p className="text-muted-foreground">No bookings yet.</p>}
-      </div>
-    </Card>
+  return (
+    <Tabs defaultValue="demos">
+      <TabsList className="flex h-auto w-fit flex-wrap gap-1 rounded-2xl border border-white/60 bg-white/70 p-1.5 shadow-sm backdrop-blur">
+        <TabsTrigger value="demos" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Demo bookings ({demoBookings.length})
+        </TabsTrigger>
+        <TabsTrigger value="contact" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Contact messages ({contactBookings.length})
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="demos" className="mt-4">
+        <SectionCard title="Demo bookings" subtitle="Trial class requests from the website.">
+          {demoBookings.length === 0 ? (
+            <EmptyState title="No demo bookings" hint="New trial requests appear here in real time." />
+          ) : (
+            <div className="space-y-2">{demoBookings.map((d) => enquiryRow(d, false))}</div>
+          )}
+        </SectionCard>
+      </TabsContent>
+      <TabsContent value="contact" className="mt-4">
+        <SectionCard title="Contact messages" subtitle="General questions from the Contact page.">
+          {contactBookings.length === 0 ? (
+            <EmptyState title="No messages" hint="Contact form submissions appear here in real time." />
+          ) : (
+            <div className="space-y-2">{contactBookings.map((d) => enquiryRow(d, true))}</div>
+          )}
+        </SectionCard>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+/* ═══════════════ Website (testimonials · stories · stats) ═══════════════ */
+function WebsitePanel() {
+  return (
+    <Tabs defaultValue="testimonials">
+      <TabsList className="flex h-auto w-fit flex-wrap gap-1 rounded-2xl border border-white/60 bg-white/70 p-1.5 shadow-sm backdrop-blur">
+        <TabsTrigger value="testimonials" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Testimonials
+        </TabsTrigger>
+        <TabsTrigger value="stories" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Success stories
+        </TabsTrigger>
+        <TabsTrigger value="stats" className="rounded-xl px-4 py-2 text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+          Site stats
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="testimonials" className="mt-4">
+        <TestimonialsAdmin />
+      </TabsContent>
+      <TabsContent value="stories" className="mt-4">
+        <StoriesAdmin />
+      </TabsContent>
+      <TabsContent value="stats" className="mt-4">
+        <StatsAdmin />
+      </TabsContent>
+    </Tabs>
   );
 }

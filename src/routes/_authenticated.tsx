@@ -40,79 +40,14 @@ function AuthLayout() {
   return (
     <PageShell showNavbar={false}>
       <div className="container mx-auto px-4 py-8">
-        <div className="glass rounded-3xl p-3 mb-6 flex flex-wrap items-center justify-between gap-3">
-          <nav className="flex items-center gap-1 text-sm flex-wrap">
-            {role === "admin" && location.pathname.startsWith("/admin") ? (
-              // Combined admin + admin-tabs nav when inside admin
-              (() => {
-                const params = new URLSearchParams(location.search);
-                const activeTab = params.get("tab") || "users";
-                const isAdminActive = location.pathname === "/admin" && !location.search;
-                const isContentActive = location.pathname === "/content";
-                const isSettingsActive = location.pathname === "/settings";
-                const isTabActive = (tab: string) =>
-                  location.pathname.startsWith("/admin") && activeTab === tab;
-                const linkClass =
-                  "px-3 py-2 rounded-xl font-medium text-foreground/75 hover:bg-primary-soft/60";
-                const activeClass =
-                  "px-3 py-2 rounded-xl font-semibold bg-primary-soft text-foreground";
-                const adminTabLink = (tab: string, label: string) => (
-                  <Link
-                    to="/admin"
-                    search={{ tab }}
-                    className={isTabActive(tab) ? activeClass : linkClass}
-                  >
-                    {label}
-                  </Link>
-                );
-
-                return (
-                  <>
-                    <Link to="/" className={location.pathname === "/" ? activeClass : linkClass}>
-                      Home
-                    </Link>
-                    <Link
-                      to="/admin"
-                      className={isAdminActive ? activeClass : linkClass}
-                    >
-                      Admin
-                    </Link>
-                    <Link
-                      to="/content"
-                      className={isContentActive ? activeClass : linkClass}
-                    >
-                      Content
-                    </Link>
-                    {/* global Live Classes link removed (admin view uses admin tab) */}
-                    <Link
-                      to="/settings"
-                      className={isSettingsActive ? activeClass : linkClass}
-                    >
-                      Profile
-                    </Link>
-
-                    {adminTabLink("users", "Users")}
-                    {adminTabLink("students", "Add Student")}
-                    {adminTabLink("courses", "Courses")}
-                    {adminTabLink("classes", "Live Classes")}
-                    {adminTabLink("enrollments", "Enrollments")}
-                    {adminTabLink("fees", "Fees")}
-                    {adminTabLink("demos", "Demo Bookings")}
-                    {adminTabLink("password-requests", "Password Requests")}
-                  </>
-                );
-              })()
-            ) : (
-              <>
-                <DashLink to="/" label="Home" />
-                {role === "admin" && <DashLink to="/admin" label="Admin" />}
-                {role === "admin" && <DashLink to="/content" label="Content" />}
-                {role === "coach" && <DashLink to="/coach" label="Coach" />}
-                {role === "student" && <DashLink to="/student" label="My Dashboard" />}
-                <DashLink to="/live-room" label="Live Classes" />
-                <DashLink to="/settings" label="Profile" />
-              </>
-            )}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/60 bg-white/70 p-3 shadow-sm backdrop-blur">
+          <nav className="flex flex-wrap items-center gap-1 text-sm">
+            <DashLink to="/" label="Home" />
+            {role === "admin" && <DashLink to="/admin" label="Admin" />}
+            {role === "coach" && <DashLink to="/coach" label="Coach" />}
+            {role === "student" && <DashLink to="/student" label="My Dashboard" />}
+            <DashLink to="/live-room" label="Live Classes" />
+            <DashLink to="/settings" label="Profile" />
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground hidden sm:inline">
@@ -141,7 +76,7 @@ function DashLink({
   label,
   hide,
 }: {
-  to: "/" | "/admin" | "/content" | "/coach" | "/student" | "/live-room" | "/settings";
+  to: "/" | "/admin" | "/coach" | "/student" | "/live-room" | "/settings";
   label: string;
   hide?: boolean;
 }) {

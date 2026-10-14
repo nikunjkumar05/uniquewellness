@@ -2,11 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { CalendarClock, Download, GraduationCap, Wallet } from "lucide-react";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
+import {
+  EmptyState,
+  PageHeader,
+  SectionCard,
+  StatCard,
+  StatusBadge,
+} from "@/components/dashboard/ui";
 
 export const Route = createFileRoute("/_authenticated/student")({
   head: () => ({ meta: [{ title: "Student Dashboard — UWI" }] }),
@@ -191,184 +197,187 @@ function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-4xl">Welcome back</h1>
+      <PageHeader title="Welcome back" subtitle="Your classes, attendance, fees and invoices." />
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="text-xs uppercase text-muted-foreground">Courses</div>
-          <div className="text-3xl font-display">{enrollments.length}</div>
-        </div>
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="text-xs uppercase text-muted-foreground">Upcoming classes</div>
-          <div className="text-3xl font-display">{upcoming.length}</div>
-        </div>
-        <div className="glass-strong rounded-2xl p-5">
-          <div className="text-xs uppercase text-muted-foreground">Unpaid (₹)</div>
-          <div className="text-3xl font-display">{unpaidTotal}</div>
-        </div>
+        <StatCard label="Courses" value={enrollments.length} icon={<GraduationCap size={18} />} />
+        <StatCard label="Upcoming classes" value={upcoming.length} icon={<CalendarClock size={18} />} />
+        <StatCard label="Unpaid (₹)" value={unpaidTotal.toLocaleString("en-IN")} icon={<Wallet size={18} />} />
       </div>
 
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">Invoices</h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {invoices.map((invoice) => {
-            const fee = invoice.fee_id ? feeById.get(invoice.fee_id) : undefined;
-            const course = fee?.course_id ? courseById.get(fee.course_id) : undefined;
-            return (
-              <div key={invoice.id} className="glass rounded-2xl p-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-bold">{invoice.invoice_number}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {course?.title || "Course invoice"}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold">₹{invoice.amount}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(invoice.issued_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => openInvoice(invoice.id)} className="font-bold">
-                    Open invoice
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void downloadInvoice(invoice.id)}
-                    className="font-bold"
-                  >
-                    <Download size={14} className="mr-2" /> Download PDF
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void copyInvoiceNumber(invoice.invoice_number)}
-                  >
-                    Copy number
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-          {invoices.length === 0 && <p className="text-muted-foreground">No invoices yet. Approved payments will appear here automatically.</p>}
-        </div>
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">Attendance</h2>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="glass rounded-2xl p-4">
-            <div className="text-xs uppercase text-muted-foreground">Marked sessions</div>
-            <div className="text-3xl font-display">{attendance.length}</div>
-          </div>
-          <div className="glass rounded-2xl p-4">
-            <div className="text-xs uppercase text-muted-foreground">Present</div>
-            <div className="text-3xl font-display">{attendedCount}</div>
-          </div>
-          <div className="glass rounded-2xl p-4">
-            <div className="text-xs uppercase text-muted-foreground">Rate</div>
-            <div className="text-3xl font-display">{attendanceRate}%</div>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {attendance.map((record) => {
-            const classInfo = attendanceClasses.find((item) => item.id === record.class_id);
-            return (
-              <div key={record.id} className="glass rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <div className="font-semibold">{classInfo?.title || "Live class"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {classInfo ? `${new Date(classInfo.scheduled_at).toLocaleString()} · ${classInfo.duration_min} min` : record.class_id}
-                  </div>
-                </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${record.present ? "bg-primary text-primary-foreground" : "bg-destructive/10 text-destructive"}`}
-                >
-                  {record.present ? "Present" : "Absent"}
-                </span>
-              </div>
-            );
-          })}
-          {attendance.length === 0 && <p className="text-muted-foreground">No attendance has been marked yet.</p>}
-        </div>
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">Upcoming Live Classes</h2>
-        <div className="space-y-2">
-          {upcoming.map((c) => (
-            <div
-              key={c.id}
-              className="glass rounded-2xl p-4 flex items-center justify-between flex-wrap gap-3"
-            >
-              <div>
-                <div className="font-semibold">{c.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(c.scheduled_at).toLocaleString()} · {c.duration_min} min
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {courses.find((cc) => cc.id === c.course_id)?.title || ""}
-                </div>
-              </div>
-              <Link
-                to="/live-room"
-                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+      <SectionCard title="Upcoming live classes">
+        {upcoming.length === 0 ? (
+          <EmptyState
+            title="No upcoming classes"
+            hint="Your coach's scheduled classes appear here."
+            icon={<CalendarClock size={20} />}
+          />
+        ) : (
+          <div className="space-y-2">
+            {upcoming.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 p-4"
               >
-                Join
-              </Link>
-            </div>
-          ))}
-          {upcoming.length === 0 && <p className="text-muted-foreground">No upcoming classes.</p>}
-        </div>
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">My courses</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          {courses.map((c) => (
-            <div key={c.id} className="glass rounded-2xl p-4">
-              <div className="text-xs uppercase text-muted-foreground">{c.category}</div>
-              <div className="font-semibold">{c.title}</div>
-              {c.description && <p className="text-sm mt-1">{c.description}</p>}
-            </div>
-          ))}
-          {courses.length === 0 && (
-            <p className="text-muted-foreground">No active enrollments yet. Speak to admin.</p>
-          )}
-        </div>
-      </Card>
-
-      <Card className="glass-strong rounded-2xl p-5">
-        <h2 className="text-2xl mb-4">Fees</h2>
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-2">Period</th>
-              <th>Amount</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fees.map((f) => (
-              <tr key={f.id} className="border-t border-border">
-                <td className="py-2">{f.period}</td>
-                <td>₹{f.amount}</td>
-                <td>
-                  <span
-                    className={`px-3 py-1 text-xs rounded-full ${f.status === "paid" ? "bg-primary text-primary-foreground" : "bg-destructive/10 text-destructive"}`}
-                  >
-                    {f.status}
-                  </span>
-                </td>
-              </tr>
+                <div>
+                  <div className="font-semibold">{c.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(c.scheduled_at).toLocaleString()} · {c.duration_min} min
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {courses.find((cc) => cc.id === c.course_id)?.title || ""}
+                  </div>
+                </div>
+                <Link
+                  to="/live-room"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+                >
+                  Join
+                </Link>
+              </div>
             ))}
-          </tbody>
-        </table>
-        {fees.length === 0 && <p className="text-muted-foreground">No fee items yet.</p>}
-      </Card>
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="My courses">
+        {courses.length === 0 ? (
+          <EmptyState
+            title="No active enrollments"
+            hint="Once an admin enrolls you in a course, it shows up here."
+            icon={<GraduationCap size={20} />}
+          />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {courses.map((c) => (
+              <div key={c.id} className="rounded-2xl border border-border bg-background/60 p-4">
+                <div className="text-xs font-bold uppercase text-muted-foreground">{c.category}</div>
+                <div className="font-semibold">{c.title}</div>
+                {c.description && <p className="mt-1 text-sm">{c.description}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard
+        title="Attendance"
+        subtitle={
+          attendance.length
+            ? `${attendedCount} present of ${attendance.length} marked · ${attendanceRate}%`
+            : undefined
+        }
+      >
+        {attendance.length === 0 ? (
+          <EmptyState title="No attendance marked yet" hint="Your presence in live classes shows up here." />
+        ) : (
+          <div className="space-y-2">
+            {attendance.map((record) => {
+              const classInfo = attendanceClasses.find((item) => item.id === record.class_id);
+              return (
+                <div
+                  key={record.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/60 p-4"
+                >
+                  <div>
+                    <div className="font-semibold">{classInfo?.title || "Live class"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {classInfo
+                        ? `${new Date(classInfo.scheduled_at).toLocaleString()} · ${classInfo.duration_min} min`
+                        : record.class_id}
+                    </div>
+                  </div>
+                  <StatusBadge status={record.present ? "present" : "absent"} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Invoices">
+        {invoices.length === 0 ? (
+          <EmptyState
+            title="No invoices yet"
+            hint="Approved payments appear here automatically."
+            icon={<Wallet size={20} />}
+          />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {invoices.map((invoice) => {
+              const fee = invoice.fee_id ? feeById.get(invoice.fee_id) : undefined;
+              const course = fee?.course_id ? courseById.get(fee.course_id) : undefined;
+              return (
+                <div key={invoice.id} className="space-y-3 rounded-2xl border border-border bg-background/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold">{invoice.invoice_number}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {course?.title || "Course invoice"}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold">₹{invoice.amount}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(invoice.issued_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => openInvoice(invoice.id)} className="font-bold">
+                      Open invoice
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void downloadInvoice(invoice.id)}
+                      className="font-bold"
+                    >
+                      <Download size={14} className="mr-2" /> Download PDF
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void copyInvoiceNumber(invoice.invoice_number)}
+                    >
+                      Copy number
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Fees">
+        {fees.length === 0 ? (
+          <EmptyState title="No fee items yet" hint="Monthly fees raised by the admin appear here." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="py-2">Period</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fees.map((f) => (
+                  <tr key={f.id} className="border-t border-border">
+                    <td className="py-2">{f.period}</td>
+                    <td>₹{f.amount}</td>
+                    <td>
+                      <StatusBadge status={f.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 }

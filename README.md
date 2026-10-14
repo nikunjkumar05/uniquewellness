@@ -163,10 +163,10 @@ supabase/
 - `/book-demo` - demo booking
 - `/contact` - contact page
 - `/login`, `/signup`, `/forgot-password`, `/reset-password` - auth flows
-- `/_authenticated/student` - student dashboard
-- `/_authenticated/coach` - coach dashboard
-- `/_authenticated/admin` - admin dashboard
-- `/_authenticated/content` - course/content management
+- `/_authenticated/student` - student dashboard (classes, attendance, fees, invoices)
+- `/_authenticated/coach` - coach dashboard (overview, classes, attendance, students tabs)
+- `/_authenticated/admin` - admin dashboard (overview, people, academics, billing, enquiries, website tabs)
+- `/content` - legacy URL, redirects to the admin Website tab
 - `/_authenticated/live-room` - live class room
 - `/_authenticated/settings` - account settings
 
