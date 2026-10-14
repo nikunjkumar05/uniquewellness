@@ -27,13 +27,8 @@ export function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/career" className="text-muted-foreground hover:text-primary">
-                Career Guidance
-              </Link>
-            </li>
-            <li>
-              <Link to="/wellness" className="text-muted-foreground hover:text-primary">
-                Wellness
+              <Link to="/programs" className="text-muted-foreground hover:text-primary">
+                Career & Wellness
               </Link>
             </li>
             <li>

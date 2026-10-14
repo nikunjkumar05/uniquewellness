@@ -156,9 +156,10 @@ supabase/
 ## Main Routes
 
 - `/` - home page
-- `/chess` - play chess
-- `/career` - career guidance
-- `/wellness` - wellness programs
+- `/chess` - chess coaching programs
+- `/practice-lab` - interactive chess practice tools
+- `/programs` - career guidance & wellness (merged page)
+- `/career`, `/wellness` - legacy URLs, redirect into `/programs`
 - `/founder` - founder profile
 - `/book-demo` - demo booking
 - `/contact` - contact page

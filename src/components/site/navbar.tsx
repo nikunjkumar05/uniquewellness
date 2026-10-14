@@ -7,10 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 const links = [
   { to: "/", label: "Home" },
-  { to: "/chess", label: "Chess Coaching" },
   { to: "/practice-lab", label: "Practice Lab" },
-  { to: "/career", label: "Career Guidance" },
-  { to: "/wellness", label: "Wellness" },
+  { to: "/programs", label: "Career & Wellness" },
   { to: "/founder", label: "Founder" },
   { to: "/contact", label: "Contact" },
 ];

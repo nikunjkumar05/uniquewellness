@@ -61,7 +61,7 @@ const courses = [
   },
 ];
 
-const services = [
+const services: { icon: typeof Crown; title: string; desc: string; href: "/chess" | "/programs"; hash?: string }[] = [
   {
     icon: Crown,
     title: "Chess Mastery",
@@ -72,13 +72,15 @@ const services = [
     icon: Briefcase,
     title: "Career Guidance",
     desc: "Decades of cross-industry experience translated into practical mentorship for students and professionals.",
-    href: "/career",
+    href: "/programs",
+    hash: "career",
   },
   {
     icon: Heart,
     title: "Wellness",
     desc: "Personalised diet and exercise plans grounded in sustainable, lifestyle-friendly habits.",
-    href: "/wellness",
+    href: "/programs",
+    hash: "wellness",
   },
 ];
 
@@ -197,7 +199,7 @@ function HomePage() {
           <div className="mt-12 grid md:grid-cols-3 gap-5">
             {services.map((s, i) => (
               <Reveal key={s.title} delay={i * 140}>
-                <Link to={s.href} className="block glass-strong rounded-3xl p-7 hover-lift h-full">
+                <Link to={s.href} hash={s.hash} className="block glass-strong rounded-3xl p-7 hover-lift h-full">
                   <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground mb-5">
                     <s.icon size={22} />
                   </div>

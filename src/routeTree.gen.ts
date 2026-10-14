@@ -19,6 +19,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FounderRouteImport } from './routes/founder'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PracticeLabRouteImport } from './routes/practice-lab'
+import { Route as ProgramsRouteImport } from './routes/programs'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WellnessRouteImport } from './routes/wellness'
@@ -78,6 +79,11 @@ const PracticeLabRoute = PracticeLabRouteImport.update({
   path: '/practice-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProgramsRoute = ProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/founder': typeof FounderRoute
   '/login': typeof LoginRoute
   '/practice-lab': typeof PracticeLabRoute
+  '/programs': typeof ProgramsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/wellness': typeof WellnessRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/founder': typeof FounderRoute
   '/login': typeof LoginRoute
   '/practice-lab': typeof PracticeLabRoute
+  '/programs': typeof ProgramsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/wellness': typeof WellnessRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/founder': typeof FounderRoute
   '/login': typeof LoginRoute
   '/practice-lab': typeof PracticeLabRoute
+  '/programs': typeof ProgramsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/wellness': typeof WellnessRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/founder'
     | '/login'
     | '/practice-lab'
+    | '/programs'
     | '/reset-password'
     | '/signup'
     | '/wellness'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/founder'
     | '/login'
     | '/practice-lab'
+    | '/programs'
     | '/reset-password'
     | '/signup'
     | '/wellness'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/founder'
     | '/login'
     | '/practice-lab'
+    | '/programs'
     | '/reset-password'
     | '/signup'
     | '/wellness'
@@ -261,6 +273,7 @@ export interface RootRouteChildren {
   FounderRoute: typeof FounderRoute
   LoginRoute: typeof LoginRoute
   PracticeLabRoute: typeof PracticeLabRoute
+  ProgramsRoute: typeof ProgramsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   WellnessRoute: typeof WellnessRoute
@@ -336,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/practice-lab'
       fullPath: '/practice-lab'
       preLoaderRoute: typeof PracticeLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/programs': {
+      id: '/programs'
+      path: '/programs'
+      fullPath: '/programs'
+      preLoaderRoute: typeof ProgramsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -437,6 +457,7 @@ const rootRouteChildren: RootRouteChildren = {
   FounderRoute: FounderRoute,
   LoginRoute: LoginRoute,
   PracticeLabRoute: PracticeLabRoute,
+  ProgramsRoute: ProgramsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   WellnessRoute: WellnessRoute,

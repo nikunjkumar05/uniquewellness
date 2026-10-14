@@ -1,12 +1,11 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { BookOpen, BriefcaseBusiness, Home, LayoutDashboard, Phone, Sparkles } from "lucide-react";
+import { BookOpen, Home, LayoutDashboard, Phone, Sparkles } from "lucide-react";
 import { dashboardPathForRole, useAuth } from "@/hooks/use-auth";
 
 const primaryLinks = [
   { to: "/", label: "Home", icon: Home },
   { to: "/chess", label: "Chess", icon: BookOpen },
-  { to: "/career", label: "Career", icon: BriefcaseBusiness },
-  { to: "/wellness", label: "Wellness", icon: Sparkles },
+  { to: "/programs", label: "Programs", icon: Sparkles },
   { to: "/contact", label: "Contact", icon: Phone },
 ] as const;
 
@@ -26,7 +25,11 @@ export function BottomNavigation() {
       aria-label="Primary mobile navigation"
       className="bottom-app-nav fixed inset-x-0 bottom-0 z-[99998] px-3 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 lg:hidden"
     >
-      <div className="mx-auto grid max-w-md grid-cols-5 rounded-[24px] border border-white/70 bg-white/88 p-1.5 shadow-[0_-12px_38px_-24px_rgba(15,23,42,0.42)] backdrop-blur-2xl">
+      <div
+        className={`mx-auto grid max-w-md rounded-[24px] border border-white/70 bg-white/88 p-1.5 shadow-[0_-12px_38px_-24px_rgba(15,23,42,0.42)] backdrop-blur-2xl ${
+          links.length === 5 ? "grid-cols-5" : "grid-cols-4"
+        }`}
+      >
         {links.map((item) => {
           const isActive =
             item.to === "/"
